@@ -3,6 +3,8 @@ import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import type { LifeCalculatorInput } from "../life-insurance-calculator.js";
 import type { DisabilityCalculatorInput } from "../disability-insurance-calculator.js";
 import type { CriticalIllnessCalculatorInput } from "../critical-illness-calculator.js";
+import { ALL_HEALTH_COVERAGE_MODULES } from "@insurance-advisor/domain";
+import type { HealthAssessorInput } from "../health-module-assessor.js";
 
 /**
  * DEMO/TEST ADAPTERS ONLY — not the real pipeline.
@@ -145,4 +147,20 @@ export function fromHouseholdFixtureForCriticalIllness(
     reliableMonthlyIncomeDuringRecovery,
     ...overrides,
   };
+}
+
+/**
+ * DEMO ADAPTER ONLY. A fixture with any `category: "health"` coverage row
+ * (however vague) maps to every module being "unknown" — we know *some*
+ * health policy exists but not which modules it actually covers, which is
+ * the honest state, not a guess. A fixture with no health coverage row at
+ * all maps to every module being explicitly `existing: false` — genuinely
+ * known to be absent, not unknown.
+ */
+export function fromHouseholdFixtureForHealth(fixture: HouseholdFixture): HealthAssessorInput {
+  const hasAnyHealthCoverage = fixture.coverages.some((c) => c.category === "health");
+  if (hasAnyHealthCoverage) {
+    return { modules: [] };
+  }
+  return { modules: ALL_HEALTH_COVERAGE_MODULES.map((module) => ({ module, existing: false as const })) };
 }

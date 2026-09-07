@@ -1,14 +1,34 @@
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import { ALL_HOUSEHOLD_FIXTURES } from "@insurance-advisor/test-fixtures";
 import type { CalculationTrace } from "@insurance-advisor/shared";
+import type { HealthCoverageModule } from "@insurance-advisor/domain";
 import {
   LifeInsuranceCalculator,
   DisabilityInsuranceCalculator,
   CriticalIllnessCalculator,
+  HealthModuleAssessor,
   fromHouseholdFixture,
   fromHouseholdFixtureForDisability,
   fromHouseholdFixtureForCriticalIllness,
+  fromHouseholdFixtureForHealth,
 } from "@insurance-advisor/calculators";
+
+const HEALTH_MODULE_LABELS: Record<HealthCoverageModule, string> = {
+  surgeries_israel: "ניתוחים בישראל",
+  surgeries_abroad: "ניתוחים בחו״ל",
+  transplants: "השתלות",
+  special_treatments_abroad: "טיפולים מיוחדים בחו״ל",
+  medications_outside_basket: "תרופות מחוץ לסל",
+  ambulatory: "אמבולטורי",
+  personalized_medicine: "רפואה מותאמת אישית",
+};
+
+const HEALTH_NEED_LABELS: Record<string, string> = {
+  high: "גבוה",
+  medium: "בינוני",
+  low: "נמוך",
+  not_applicable: "קיים",
+};
 
 const REASON_CODE_LABELS: Record<string, string> = {
   LIFE_DEPENDENTS_PRESENT: "קיימים תלויים כלכליים",
@@ -19,6 +39,8 @@ const REASON_CODE_LABELS: Record<string, string> = {
   DI_EXISTING_MONTHLY_GAP: "פער חודשי מול הכיסוי הקיים",
   CI_LOW_LIQUID_BUFFER: "נדרשת רזרבה נזילה לתקופת ההתאוששות",
   CI_EXISTING_COVERAGE_PRESENT: "קיים כיסוי מחלות קשות",
+  HEALTH_MODULE_UNKNOWN: "לא ידוע אם קיים כיסוי",
+  HEALTH_DUPLICATE_POSSIBLE: "חשש לכפילות כיסוי",
 };
 
 const CONFIDENCE_LABELS: Record<string, string> = {
@@ -111,9 +133,42 @@ function ResultCard(props: {
   );
 }
 
+function HealthModuleCard(props: { assessments: ReturnType<HealthModuleAssessor["assess"]> }) {
+  const { assessments } = props;
+  return (
+    <section className="card">
+      <h2>ביטוח בריאות פרטי — לפי מודול</h2>
+      <div className="badges">
+        <span className={`badge confidence-${assessments.confidence}`}>
+          אמינות נתונים: {CONFIDENCE_LABELS[assessments.confidence]}
+        </span>
+      </div>
+      <table className="trace">
+        <tbody>
+          {assessments.moduleAssessments.map((a) => (
+            <tr key={a.module}>
+              <td>{HEALTH_MODULE_LABELS[a.module]}</td>
+              <td>{a.existing === "unknown" ? "לא ידוע" : a.existing ? "קיים" : "לא קיים"}</td>
+              <td>עוצמת צורך: {HEALTH_NEED_LABELS[a.need] ?? a.need}</td>
+              <td className="amount">
+                {a.reasonCodes.map((code) => (
+                  <span className="badge" key={code} style={{ marginInlineStart: 4 }}>
+                    {REASON_CODE_LABELS[code] ?? code}
+                  </span>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 const lifeCalculator = new LifeInsuranceCalculator();
 const disabilityCalculator = new DisabilityInsuranceCalculator();
 const criticalIllnessCalculator = new CriticalIllnessCalculator();
+const healthModuleAssessor = new HealthModuleAssessor();
 const CI_HEADLINE_DURATION_MONTHS = 6;
 // Fixed "now" so the preview is deterministic across runs/reviewers, matching the fixtures' own reference date.
 const NOW = new Date("2026-09-07T00:00:00.000Z");
@@ -123,8 +178,8 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3 (PRD §12-14, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה ומחלות קשות על 5 פרופילי בדיקה
-        ישירות מהקוד — ללא שאלון, ללא API, ללא אחסון.
+        Milestone 3-4 (PRD §12-15, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה, מחלות קשות ואת מנוע הערכת
+        מודולי הבריאות על 5 פרופילי בדיקה ישירות מהקוד — ללא שאלון, ללא API, ללא אחסון.
       </p>
 
       <div className="banner">
@@ -146,6 +201,9 @@ export default function PreviewPage() {
         if (!ciHeadline) {
           return null; // unreachable — RECOVERY_DURATION_OPTIONS_MONTHS is never empty
         }
+
+        const healthInput = fromHouseholdFixtureForHealth(fixture);
+        const health = healthModuleAssessor.assess(healthInput, STARTER_ENGINE_CONFIG);
 
         return (
           <div key={fixture.name}>
@@ -215,6 +273,8 @@ export default function PreviewPage() {
                 </details>
               }
             />
+
+            <HealthModuleCard assessments={health} />
           </div>
         );
       })}

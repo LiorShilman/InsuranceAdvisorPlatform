@@ -2,6 +2,31 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-07 — Health module assessment (PRD §15)
+
+1. **`HealthCoverageModule` and `HealthModuleAssessment` live in
+   `packages/domain`**, not `packages/calculators`, specifically so
+   `packages/config` can key `healthModuleDefaultNeedWhenMissing` off the
+   same type without config depending on calculators. Checked for cycles:
+   domain doesn't depend on config, so config → domain stays acyclic.
+2. **`HealthModuleAssessor` does not implement `NeedsCalculator<T, Money>`
+   and produces no `CalculationTrace`.** PRD §15's model is categorical per
+   module (existing/unknown, duplicate risk, need level), not a lump sum or
+   monthly gap — there's no meaningful "amount" to trace. Every module's
+   `reasonCodes` + `existing`/`duplicateRisk` fields serve the same
+   explainability goal rule 8 is after, just shaped differently. This is a
+   deliberate exception, not an oversight.
+3. **`healthModuleDefaultNeedWhenMissing` (the need level assigned when a
+   module is known-absent) is an invented config default**, not a real
+   product/underwriting recommendation — PRD §15 names the modules but
+   gives no scoring formula at all. Kept in config (not hard-coded in the
+   assessor) per rules 10-11, but still flagged in docs/ASSUMPTIONS.md as
+   unreviewed.
+4. **A module never mentioned in the input is treated identically to an
+   explicit `existing: "unknown"` answer** — both produce `need: "medium"`
+   and `HEALTH_MODULE_UNKNOWN`. "Never asked" and "asked, don't know" are
+   the same epistemic state from the calculator's point of view.
+
 ## 2026-09-07 — Disability/Income Protection calculator (PRD §13)
 
 1. **`existingNetExpectedDisabilityIncome` is a single aggregate figure**,

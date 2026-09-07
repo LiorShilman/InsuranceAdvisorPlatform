@@ -40,4 +40,15 @@ export const STARTER_ENGINE_CONFIG: EngineConfig = {
     affordabilityPenalty: 1,
     duplicatePenalty: 1,
   },
+
+  // Invented placeholders, not a product/actuarial recommendation — see docs/ASSUMPTIONS.md.
+  healthModuleDefaultNeedWhenMissing: {
+    surgeries_israel: "high",
+    surgeries_abroad: "medium",
+    transplants: "high",
+    special_treatments_abroad: "medium",
+    medications_outside_basket: "high",
+    ambulatory: "low",
+    personalized_medicine: "low",
+  },
 };

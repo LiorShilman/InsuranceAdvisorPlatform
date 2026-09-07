@@ -1,4 +1,5 @@
 import { Money } from "@insurance-advisor/shared";
+import type { HealthCoverageModule } from "@insurance-advisor/domain";
 
 /**
  * Versioned engine configuration — PRD §41. Every Analysis snapshot stores
@@ -28,4 +29,13 @@ export type EngineConfig = {
   };
 
   priorityWeights: Record<string, number>;
+
+  /**
+   * PRD §15 gives module names but no need-scoring formula. This is the
+   * fallback "need" level used when a module is known to be absent
+   * (`existing: false`) — config-driven rather than hard-coded in the
+   * assessor, per rule 10/11, but still an invented placeholder pending
+   * real product/underwriting input. See docs/ASSUMPTIONS.md.
+   */
+  healthModuleDefaultNeedWhenMissing: Record<HealthCoverageModule, "high" | "medium" | "low">;
 };
