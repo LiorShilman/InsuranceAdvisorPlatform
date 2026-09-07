@@ -5,13 +5,15 @@
   "type": "module",
   "description": "Insurance Needs Analysis Platform - see INSURANCE_ADVISOR_PRD_v1.0.md",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/web"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc -b tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
+    "preview": "npm run dev --workspace apps/web",
     "prisma:validate": "prisma validate --schema=prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma --name init"

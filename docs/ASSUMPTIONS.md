@@ -55,6 +55,55 @@ something concrete to start tuning.
   `2026-09-07` (today, per this session) rather than `new Date()`, so
   fixtures are deterministic across test runs.
 
+## Life Insurance calculator (`packages/calculators/src/life-insurance-calculator.ts`)
+
+- `ChildSupportNeed` (PRD §12.2) is not modeled as a separate line item —
+  it's folded into `IncomeReplacementNeed` via `householdRequiredAnnualSpend`,
+  which is assumed to already include child-related costs. Separating it
+  would need child-specific consumption data the questionnaire doesn't
+  collect yet.
+- `SurvivorBenefitsPresentValue` defaults to zero without missing-data
+  bookkeeping (unlike `existingLifeInsurance`) — treated as "no survivor
+  pension benefit modeled" rather than "unknown", since nothing upstream
+  produces this fact yet at all.
+- Confidence is `"low"` if any of `householdRequiredAnnualSpend`,
+  `survivorReliableAnnualIncome`, `existingLifeInsurance`, or
+  `youngestDependentAge` (when there are dependents) is missing; `"medium"`
+  for any other missing field; `"high"` otherwise. Range widening is ±25%
+  (low) / ±10% (medium) / exact (high) — PRD §9 mandates *that* confidence
+  affects the displayed range, not these specific percentages, which are
+  invented.
+- Review triggers (§22) are a fixed rule-of-thumb per input shape
+  (`annual_review` + `income_change_20pct` always; `mortgage_repaid` if a
+  mortgage exists; `child_independent` if there are dependents) — not
+  computed from any config or scoring model.
+- PV summation rounds each year's term to whole agorot via `Money` before
+  summing, rather than summing at full decimal precision and rounding once.
+  Both are defensible; this one keeps every intermediate value
+  independently audit-exact, matching §25's "audit stores exact" intent.
+
+## Known dependency vulnerabilities (not remediated)
+
+`npm audit` reports 7 advisories (moderate→critical) as of this milestone:
+esbuild/vite/vitest chain (dev-only, requires visiting a malicious site while
+`vitest`/its bundled dev server is running — not applicable to CI-style
+`vitest run` usage here) and a long list of Next.js 14.2.x advisories that
+are only fixed in Next 16 (a major version with its own migration cost).
+Left unfixed for now because: this app runs locally only, is never
+deployed or exposed to the internet, and `next@16` is a bigger jump than
+this preview slice warrants. **Must be revisited before Milestone 6** (the
+real UI) or before any deployment — re-run `npm audit` and either upgrade
+or explicitly accept each remaining advisory at that point.
+
+## Preview UI (`apps/web`)
+
+- Built specifically because the user asked to see the system working, not
+  because Milestone 6 started. No Tailwind, no routing beyond one page, no
+  API — the page imports the calculator and fixtures directly as a client
+  component. Explicitly out of scope: priority scoring/bands (Milestone 5,
+  not built), so cards show category/need/gap/trace but no
+  CRITICAL/HIGH/MEDIUM priority badge yet.
+
 ## Regulatory
 
 - No disclaimer/compliance copy, license fields, or regulatory feature

@@ -5,5 +5,10 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../shared" }, { "path": "../domain" }, { "path": "../config" }]
+  "references": [
+    { "path": "../shared" },
+    { "path": "../domain" },
+    { "path": "../config" },
+    { "path": "../test-fixtures" }
+  ]
 }

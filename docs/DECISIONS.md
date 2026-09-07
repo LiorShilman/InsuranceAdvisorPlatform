@@ -2,6 +2,51 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-07 — Life Insurance calculator slice (PRD §12, §48) + preview UI
+
+1. **`LifeCalculatorInput` is a typed, pre-normalized shape, not raw `Fact[]`.**
+   The full pipeline (§10) is Questionnaire → Facts → Rules → Calculators;
+   the Facts→typed-input mapping is Facts Engine/Questionnaire work that
+   doesn't exist yet (Milestone 2). The calculator takes the normalized
+   shape directly so it can be built and tested (§48) without waiting on
+   that milestone. `packages/calculators/src/demo/household-fixture-adapter.ts`
+   (`fromHouseholdFixture`) bridges `HouseholdFixture` → `LifeCalculatorInput`
+   for both the test suite and the `apps/web` preview page — it is
+   explicitly labeled DEMO/TEST ONLY in its own file header, not the real
+   pipeline. Its existence is also why `packages/calculators` now depends
+   on `packages/test-fixtures` for its `HouseholdFixture` type, which is an
+   unusual direction for a "calculator" package to depend in — acceptable
+   here only because the whole adapter is demo-scoped and isolated under
+   `src/demo/`.
+
+2. **Every optional money field on `LifeCalculatorInput` distinguishes
+   "explicitly zero" from "unknown".** `undefined` always means unknown and
+   goes through `resolveMoney()`, which defaults to `Money.zero()` but
+   *always* also records a `missingFacts` entry and an `Assumption` —
+   satisfying PRD rule 13 ("never silently convert unknown to 0") while
+   still letting the calculation proceed. Fields that plausibly have no
+   "unknown" state at this layer (a goal simply not being present, e.g.
+   `educationNeed`, `immediateExpenses`) default to zero without that
+   bookkeeping — see docs/ASSUMPTIONS.md.
+
+3. **The calculator does not validate its own input** (no negative-money
+   guard, no age-range check). PRD §33 validation is explicitly an
+   Answer/Questionnaire-layer concern upstream of Facts; calculators trust
+   already-validated input, consistent with the §10 pipeline order.
+
+4. **Trace line-sum invariant is preserved even when the headline gap is
+   floored at zero** (PRD §43: never a negative gap) by adding a synthetic
+   `floor_at_zero` trace line when the raw signed sum goes negative, rather
+   than silently discarding the difference.
+
+5. **A minimal preview UI was added to `apps/web`** (Next.js, no Tailwind
+   yet) specifically because the user asked to see something working,
+   overriding §47's "don't build UI yet" for this one throwaway-adjacent
+   purpose. It is explicitly labeled as a preview in its own page copy —
+   it is not the real Milestone 6 dashboard/report UI (§37-39), which still
+   needs the Priority Engine, Questionnaire, and API layers this preview
+   skips by calling the calculator directly from a client component.
+
 ## 2026-09-07 — Milestone 1 scaffold
 
 1. **npm workspaces**, not pnpm/turborepo. The sibling `ls-financial-advisor`
