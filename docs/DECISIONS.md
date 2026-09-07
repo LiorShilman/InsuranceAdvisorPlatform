@@ -2,6 +2,51 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Adaptive Questionnaire engine + real interactive flow — Milestone 2 (scoped to Life)
+
+1. **§7.2's four-factor `questionScore` formula was simplified to two
+   effective factors**: `relevance` (showWhen true/absent) and
+   `uncertainty` (unanswered) collapse into a single "is this question
+   even askable right now" filter — there's no partial-relevance or
+   partial-uncertainty state for a single-value answer, so multiplying
+   four 0..1 factors together would need two more invented per-question
+   constants (`answerability`, a finer-grained `uncertainty`) for zero
+   behavioral difference from just filtering. What's left —
+   `decisionImpact - userBurdenPenalty` — is what actually ranks
+   candidates. `decisionImpact` is authored per-question (invented, like
+   every other unscored PRD factor); `userBurdenPenalty` is a small
+   config-free lookup by `answerType` (boolean cheapest, multi_select
+   priciest).
+2. **This questionnaire is scoped to the Life Insurance calculator only**
+   (12 questions) — not the full life/disability/CI/health/LTC coverage
+   the PRD's Third Prompt (§49) asks for. Extending it to the other four
+   calculators is mechanical repetition of the exact same pattern
+   (question → fact key → adapter field), not a design problem; scoping
+   down here kept this slice real and fully tested rather than wide and
+   shallow.
+3. **`factsToLifeCalculatorInput` (packages/calculators) is the REAL Facts
+   Engine adapter**, using the dotted fact-key convention from PRD §8's
+   own examples — this is what `fromHouseholdFixture` (the demo adapter)
+   was always a stand-in for. A missing optional fact stays `undefined`
+   here too (never silently 0) — the same discipline flows all the way
+   from a real answer through to the calculator.
+4. **The `apps/web` preview now has two pages**: `/` (5 hardcoded
+   fixtures, unchanged) and `/questionnaire` (a real client-side flow —
+   `"use client"`, no fixtures, no fake data). `ResultCard` and its label
+   maps were extracted to `app/components/result-card.tsx` so both pages
+   share it instead of duplicating ~150 lines.
+5. **Import paths inside `apps/web` use extension-less specifiers**
+   (`"./components/result-card"`, not `.../result-card.js`) — unlike
+   every `packages/*` package (which use NodeNext resolution and need the
+   explicit `.js` extension), Next.js's webpack bundler doesn't resolve a
+   `.js`-suffixed import to a `.tsx` source file even though `tsc
+   --noEmit` was satisfied by TS's `bundler` moduleResolution — caught by
+   `next build` failing after `tsc --noEmit` had already passed clean.
+6. **Validation warnings never block progress; errors do** — same PRD §33
+   rule as everywhere else in this codebase, now reachable by an actual
+   user typing an actual number into an actual text box for the first
+   time, not just asserted in a unit test.
+
 ## 2026-09-08 — Review scheduler + Recommendation object wiring — Milestone 5 done
 
 1. **`ReviewScheduler` computes one concrete date, not a calendar/notification

@@ -8,5 +8,7 @@
   "scripts": {
     "build": "tsc -b"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@insurance-advisor/shared": "*"
+  }
 }

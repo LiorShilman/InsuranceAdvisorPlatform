@@ -1,8 +1,8 @@
 /**
- * Question schema — PRD §7.1. Only the schema/data shape is defined in
- * Milestone 1. Question *selection* (§7.2 getNextQuestion / questionScore)
- * is explicitly deferred to a later milestone (the PRD's own "Third
- * Prompt", §49) — see docs/DECISIONS.md.
+ * Question schema — PRD §7.1. Milestone 2 (this file + question-selector.ts,
+ * expression-evaluator.ts, validation.ts, facts.ts) implements selection,
+ * validation, and fact production — see docs/DECISIONS.md for what's
+ * simplified vs. the PRD's full §7.2 formula.
  *
  * Dependency-free by design: showWhen/requiredWhen conditions are
  * evaluated against Answers, which is a different concern from the rules
@@ -67,4 +67,12 @@ export type Question = {
 
   /** PRD §7.3 — medical questions must be flagged sensitive. */
   sensitive?: boolean;
+
+  /**
+   * PRD §7.2's questionScore formula factor — "how much would answering
+   * this change the outcome", 0..1. Authored per-question, not derived;
+   * an invented placeholder like every other unscored PRD factor in this
+   * codebase — see docs/ASSUMPTIONS.md.
+   */
+  decisionImpact: number;
 };

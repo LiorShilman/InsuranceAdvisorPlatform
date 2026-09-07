@@ -10,6 +10,7 @@
   "dependencies": {
     "@insurance-advisor/calculators": "*",
     "@insurance-advisor/config": "*",
+    "@insurance-advisor/questionnaire": "*",
     "@insurance-advisor/shared": "*",
     "@insurance-advisor/test-fixtures": "*",
     "next": "14.2.35",

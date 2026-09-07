@@ -9,5 +9,6 @@ export * from "./priority-engine.js";
 export * from "./budget-affordability-engine.js";
 export * from "./recommendation-builder.js";
 export * from "./review-scheduler.js";
+export * from "./facts-to-life-input.js";
 
 export * from "./demo/household-fixture-adapter.js";

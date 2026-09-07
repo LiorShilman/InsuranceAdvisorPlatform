@@ -137,6 +137,22 @@ something concrete to start tuning.
   suppressed to zero (PRD §43 safety test: "suppresses uninsured gap
   because budget is too low" must fail the build).
 
+## Adaptive Questionnaire (Life Insurance only)
+
+- `decisionImpact` per question (0.1 to 0.9 across the 12 starter
+  questions) — invented, hand-ranked by "how much does this change a life
+  insurance recommendation", not derived from any sensitivity analysis.
+- `userBurdenPenalty` per `answerType` (boolean 0.05 → multi_select 0.2) —
+  invented ordering (fewer taps/thought = lower burden), not measured.
+- The 12-question starter bank covers only what `LifeCalculatorInput`
+  needs — no disability/CI/health/LTC questions exist yet. A user who
+  finishes this questionnaire and looks at the other four calculator
+  cards on `/` is still looking at fixture-driven numbers, not their own.
+- `factsToLifeCalculatorInput` only recognizes the exact fact keys
+  `STARTER_LIFE_QUESTIONS` produces — it's not a general-purpose Facts
+  interpreter that would tolerate a differently-named fact meaning the
+  same thing.
+
 ## Known dependency vulnerabilities (not remediated)
 
 `npm audit` reports 7 advisories (moderate→critical) as of this milestone:
