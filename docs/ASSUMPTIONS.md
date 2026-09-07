@@ -91,6 +91,19 @@ something concrete to start tuning.
 - `LTC_DURATION_SCENARIOS_YEARS = [1, 2, 3, 5, 8]` — an arbitrary spread,
   not derived from actuarial LTC duration statistics.
 
+## Coverage deduplication engine
+
+- `duplicateDetection.weights` (sameInsured=30, sameRisk=30,
+  overlappingBenefit=10, overlappingTerm=30) and `scoreThreshold=80` are
+  invented and specifically calibrated (not just guessed) so that
+  `sameInsured`, `sameRisk`, and `overlappingTerm` are jointly required —
+  any two alone (60) fall short of the threshold. This was discovered
+  during test-writing: an initial equal-ish weighting let same-person +
+  same-category alone (without any actual time overlap) cross the
+  threshold, which would have flagged completely normal sequential
+  coverage (an old expired policy replaced by a new one) as a "duplicate".
+  No real product/actuarial review of these numbers.
+
 ## Known dependency vulnerabilities (not remediated)
 
 `npm audit` reports 7 advisories (moderate→critical) as of this milestone:

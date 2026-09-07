@@ -8,6 +8,7 @@ import {
   CriticalIllnessCalculator,
   HealthModuleAssessor,
   LongTermCareCalculator,
+  CoverageDeduplicationEngine,
   fromHouseholdFixture,
   fromHouseholdFixtureForDisability,
   fromHouseholdFixtureForCriticalIllness,
@@ -174,6 +175,7 @@ const disabilityCalculator = new DisabilityInsuranceCalculator();
 const criticalIllnessCalculator = new CriticalIllnessCalculator();
 const healthModuleAssessor = new HealthModuleAssessor();
 const longTermCareCalculator = new LongTermCareCalculator();
+const deduplicationEngine = new CoverageDeduplicationEngine();
 const CI_HEADLINE_DURATION_MONTHS = 6;
 const LTC_HEADLINE_DURATION_YEARS = 3;
 // Fixed "now" so the preview is deterministic across runs/reviewers, matching the fixtures' own reference date.
@@ -184,8 +186,9 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3-4 (PRD §12-16, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה, מחלות קשות, סיעוד ואת מנוע
-        הערכת מודולי הבריאות על 5 פרופילי בדיקה ישירות מהקוד — ללא שאלון, ללא API, ללא אחסון.
+        Milestone 3-4 (PRD §12-16 + §18, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה, מחלות קשות, סיעוד, את
+        מנוע הערכת מודולי הבריאות ואת בדיקת הכפילויות בין כיסויים קיימים — על 5 פרופילי בדיקה ישירות מהקוד, ללא
+        שאלון, ללא API, ללא אחסון.
       </p>
 
       <div className="banner">
@@ -217,6 +220,8 @@ export default function PreviewPage() {
         if (!ltcHeadline) {
           return null; // unreachable — LTC_DURATION_SCENARIOS_YEARS is never empty
         }
+
+        const dedup = deduplicationEngine.detect(fixture.coverages, STARTER_ENGINE_CONFIG);
 
         return (
           <div key={fixture.name}>
@@ -316,6 +321,19 @@ export default function PreviewPage() {
                 </details>
               }
             />
+
+            <section className="card">
+              <h2>בדיקת כפילות כיסויים קיימים</h2>
+              {dedup.flags.length === 0 ? (
+                <p style={{ fontSize: "0.9rem", color: "var(--muted)" }}>לא נמצאה חפיפה חשודה בין הכיסויים הקיימים.</p>
+              ) : (
+                dedup.flags.map((f) => (
+                  <div key={`${f.coverageIdA}-${f.coverageIdB}`} className="missing" style={{ marginBottom: 6 }}>
+                    {f.message} (ניקוד חפיפה: {f.duplicateScore}, פוליסות {f.coverageIdA} ↔ {f.coverageIdB})
+                  </div>
+                ))
+              )}
+            </section>
           </div>
         );
       })}

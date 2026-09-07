@@ -46,6 +46,24 @@ export const STARTER_ENGINE_CONFIG: EngineConfig = {
     assumedMonthlyLTCCareCost: Money.fromNumber(18_000),
   },
 
+  // Invented placeholders, calibrated so sameInsuredWeight + sameRiskWeight
+  // + overlappingTermWeight are jointly load-bearing (any two of those
+  // three alone can never reach scoreThreshold) and overlappingBenefitWeight
+  // is only a minor tie-breaker on top — see docs/ASSUMPTIONS.md for why:
+  // genuine duplication needs the same person, the same risk, AND actual
+  // time overlap; two different people, two different risks, or two
+  // non-overlapping (sequential) policies on the same risk are not
+  // duplicates just because they're similar in other ways.
+  duplicateDetection: {
+    weights: {
+      sameInsuredWeight: 30,
+      sameRiskWeight: 30,
+      overlappingBenefitWeight: 10,
+      overlappingTermWeight: 30,
+    },
+    scoreThreshold: 80,
+  },
+
   // Invented placeholders, not a product/actuarial recommendation — see docs/ASSUMPTIONS.md.
   healthModuleDefaultNeedWhenMissing: {
     surgeries_israel: "high",

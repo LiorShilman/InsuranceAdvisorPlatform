@@ -96,9 +96,28 @@ export const PERSONA_A_FAMILY_WITH_MORTGAGE: HouseholdFixture = {
       insuredPersonId: "person-a-1",
       beneficiaryType: "person",
       amount: Money.fromNumber(400_000),
+      startDate: "2019-03-01",
       verified: false,
       source: "user",
       exclusionsKnown: false,
+    },
+    {
+      // Deliberately overlapping with cov-a-1 — same person, same risk,
+      // same startDate era, both lump-sum — a plausible "forgot I already
+      // had one" duplicate, so packages/calculators' deduplication engine
+      // has something real to flag in this fixture (PRD §18).
+      ...baseEntity("cov-a-2"),
+      clientProfileId: "cp-a",
+      category: "life",
+      subtype: "term_life",
+      insuredPersonId: "person-a-1",
+      beneficiaryType: "person",
+      amount: Money.fromNumber(350_000),
+      startDate: "2019-08-01",
+      verified: false,
+      source: "user",
+      exclusionsKnown: false,
+      notes: "פוליסה נוספת שהתגלתה - ייתכן שהלקוח שכח שיש לו כבר כיסוי דומה",
     },
   ],
 

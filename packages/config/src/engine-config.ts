@@ -1,5 +1,5 @@
 import { Money } from "@insurance-advisor/shared";
-import type { HealthCoverageModule } from "@insurance-advisor/domain";
+import type { DuplicateDetectionFactors, HealthCoverageModule } from "@insurance-advisor/domain";
 
 /**
  * Versioned engine configuration — PRD §41. Every Analysis snapshot stores
@@ -39,6 +39,17 @@ export type EngineConfig = {
    */
   careAssumptions: {
     assumedMonthlyLTCCareCost: Money;
+  };
+
+  /**
+   * PRD §18 gives the four duplicateScore factor names but no weights or
+   * threshold. Config-driven per rules 10-11; unreviewed placeholders —
+   * see docs/ASSUMPTIONS.md.
+   */
+  duplicateDetection: {
+    weights: DuplicateDetectionFactors;
+    /** Only flag a pair when their combined score reaches this (PRD §18: "רק אם duplicateScore גבוה"). */
+    scoreThreshold: number;
   };
 
   /**

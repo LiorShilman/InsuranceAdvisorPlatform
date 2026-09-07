@@ -2,6 +2,42 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-07 — Coverage deduplication engine (PRD §18)
+
+1. **Same-category "sameRisk" match is overridden to `false` when exactly
+   one side of the pair has `beneficiaryType: "lender"`** — a personal
+   life policy and a mortgage-lender life policy on the same person are
+   not duplicates, they serve different purposes (same principle as §12.5,
+   applied here so the dedup engine doesn't contradict the life
+   calculator's own treatment of mortgage cover).
+2. **Weights are calibrated so `sameInsured`, `sameRisk`, and
+   `overlappingTerm` are jointly load-bearing** (no two of those three
+   alone reach `scoreThreshold`), with `overlappingBenefit` only a minor
+   addition on top. PRD §18 gives four factor names and an additive-sum
+   formula but no numbers; a naive equal-ish weighting (tried first) let
+   "same person + same category" alone cross the threshold regardless of
+   whether the two policies' time periods ever overlapped — which would
+   flag entirely normal sequential/expired-then-replaced coverage as a
+   "duplicate". Recalibrated once this was caught in testing (see
+   docs/ASSUMPTIONS.md); still an invented, unreviewed calibration.
+3. **A missing `startDate` on either policy makes the pair's time ranges
+   "unresolvably possibly-overlapping"** rather than assumed non-overlapping
+   — same unknown-stays-unknown discipline as everywhere else (rule 13). A
+   missing `endDate` is instead treated as open-ended (extends to
+   infinity), which is a real, common, non-ambiguous state ("still
+   active"), not an unknown one — so it does NOT trigger the same
+   can't-rule-it-out fallback.
+4. **`packages/test-fixtures`'s Persona A now has a second, deliberately
+   overlapping life policy** (`cov-a-2`) specifically so this engine has a
+   real positive case to flag in both a test and the `apps/web` preview —
+   previously every fixture's coverages were either singletons or
+   intentionally non-duplicative (the mortgage-vs-personal-life pairs).
+   Verified this doesn't change any existing calculator test's assertions
+   (none pin an exact `existingLifeInsurance` number for Persona A).
+5. **No `CalculationTrace`, same reasoning as the health module assessor**
+   (§15 entry above) — this is a pairwise categorical flag list, not a
+   Money gap.
+
 ## 2026-09-07 — Long-Term Care calculator (PRD §16)
 
 1. **`expectedMonthlyCareCost` falls back to a new `config.careAssumptions.
