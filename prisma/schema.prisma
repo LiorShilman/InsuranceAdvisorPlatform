@@ -1,0 +1,459 @@
+// Insurance Advisor Platform — PostgreSQL schema, PRD §26.2.
+//
+// Every table has id/created_at/updated_at (PRD rule 17 in §26.2 note).
+// Sensitive tables (health_disclosures, identifiers, documents) are
+// flagged with a comment — PRD §26 says these need field-level
+// encryption/masking; that implementation is a later milestone, this
+// schema only marks where it applies.
+//
+// A few tables exist here beyond §26.2's literal list because the domain
+// types (§26.1) require them and other PRD sections reference them
+// directly: `households` (§6 step, §26.1 Household), `mortgages` (§12.5),
+// `goals` (§16/§23 goal-driven scenario inputs). Logged in
+// docs/DECISIONS.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  email       String   @unique
+  displayName String?  @map("display_name")
+  role        String   @default("client")
+
+  clientProfiles ClientProfile[]
+  consents       Consent[]
+
+  @@map("users")
+}
+
+model ClientProfile {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  userId          String   @map("user_id")
+  primaryPersonId String   @map("primary_person_id")
+  spousePersonId  String?  @map("spouse_person_id")
+  householdId     String   @map("household_id")
+
+  user                    User                     @relation(fields: [userId], references: [id])
+  household               Household                @relation(fields: [householdId], references: [id])
+  coverages               Coverage[]
+  recommendations         Recommendation[]
+  questionnaireSessions   QuestionnaireSession[]
+  scenarios               Scenario[]
+  reports                 Report[]
+
+  @@map("client_profiles")
+}
+
+model Household {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  maritalStatus String   @map("marital_status")
+
+  clientProfiles ClientProfile[]
+  dependents     Dependent[]
+  expenses       Expense[]
+  assets         Asset[]
+  liabilities    Liability[]
+  goals          Goal[]
+
+  @@map("households")
+}
+
+model Person {
+  id                 String    @id @default(uuid())
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  clientProfileId    String    @map("client_profile_id")
+  firstName          String?   @map("first_name")
+  dateOfBirth        DateTime? @map("date_of_birth")
+  isPrimaryApplicant Boolean   @default(false) @map("is_primary_applicant")
+  isSpouse           Boolean   @default(false) @map("is_spouse")
+  retirementAge      Int?      @map("retirement_age")
+
+  employments      Employment[]
+  incomeSources    IncomeSource[]
+  healthDisclosure HealthDisclosure?
+
+  @@map("persons")
+}
+
+model Dependent {
+  id                            String    @id @default(uuid())
+  createdAt                     DateTime  @default(now()) @map("created_at")
+  updatedAt                     DateTime  @updatedAt @map("updated_at")
+  householdId                   String    @map("household_id")
+  dateOfBirth                   DateTime? @map("date_of_birth")
+  relationship                  String
+  hasSpecialNeeds               Boolean?  @map("has_special_needs")
+  targetIndependenceAgeOverride Int?      @map("target_independence_age_override")
+
+  household Household @relation(fields: [householdId], references: [id])
+
+  @@map("dependents")
+}
+
+model Employment {
+  id                        String  @id @default(uuid())
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+  personId                  String  @map("person_id")
+  status                    String
+  occupation                String?
+  employerName              String? @map("employer_name")
+  yearsInCurrentRole        Int?    @map("years_in_current_role")
+  hasPensionDisabilityCoverage Boolean? @map("has_pension_disability_coverage")
+  hasEmployerCoverage       Boolean? @map("has_employer_coverage")
+
+  person Person @relation(fields: [personId], references: [id])
+
+  @@map("employments")
+}
+
+model IncomeSource {
+  id                  String   @id @default(uuid())
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  personId            String   @map("person_id")
+  type                String
+  netMonthlyAmount    Decimal  @map("net_monthly_amount") @db.Decimal(18, 2)
+  reliableIfDeceased  Boolean  @map("reliable_if_deceased")
+  reliableIfDisabled  Boolean  @map("reliable_if_disabled")
+
+  person Person @relation(fields: [personId], references: [id])
+
+  @@map("income_sources")
+}
+
+model Expense {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  householdId   String   @map("household_id")
+  category      String
+  monthlyAmount Decimal  @map("monthly_amount") @db.Decimal(18, 2)
+  essential     Boolean
+
+  household Household @relation(fields: [householdId], references: [id])
+
+  @@map("expenses")
+}
+
+model Asset {
+  id                    String   @id @default(uuid())
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  householdId           String   @map("household_id")
+  type                  String
+  value                 Decimal  @db.Decimal(18, 2)
+  earmarkedForProtection Boolean @map("earmarked_for_protection")
+
+  household Household @relation(fields: [householdId], references: [id])
+
+  @@map("assets")
+}
+
+model Liability {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  householdId String   @map("household_id")
+  type        String
+  balance     Decimal  @db.Decimal(18, 2)
+
+  household Household @relation(fields: [householdId], references: [id])
+  mortgage  Mortgage?
+
+  @@map("liabilities")
+}
+
+model Mortgage {
+  id                             String    @id @default(uuid())
+  createdAt                      DateTime  @default(now()) @map("created_at")
+  updatedAt                      DateTime  @updatedAt @map("updated_at")
+  liabilityId                    String    @unique @map("liability_id")
+  balance                        Decimal   @db.Decimal(18, 2)
+  monthlyPayment                 Decimal   @map("monthly_payment") @db.Decimal(18, 2)
+  targetPayoffDate               DateTime? @map("target_payoff_date")
+  hasLenderBeneficiaryCoverage   Boolean   @map("has_lender_beneficiary_coverage")
+  lenderBeneficiaryCoverageAmount Decimal? @map("lender_beneficiary_coverage_amount") @db.Decimal(18, 2)
+
+  liability Liability @relation(fields: [liabilityId], references: [id])
+
+  @@map("mortgages")
+}
+
+/// Sensitive: PRD §26.2 flags this table for encryption/masking at rest.
+model HealthDisclosure {
+  id                       String  @id @default(uuid())
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+  personId                 String  @unique @map("person_id")
+  smoker                   Boolean?
+  hasChronicCondition      Boolean? @map("has_chronic_condition")
+  chronicConditionSeverity String?  @map("chronic_condition_severity")
+  hasOngoingTreatment      Boolean? @map("has_ongoing_treatment")
+  hadRecentMedicalEvent    Boolean? @map("had_recent_medical_event")
+  currentOccupationRisk    String?  @map("current_occupation_risk")
+  currentHobbyRisk         String?  @map("current_hobby_risk")
+
+  person Person @relation(fields: [personId], references: [id])
+
+  @@map("health_disclosures")
+}
+
+model Goal {
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  householdId String    @map("household_id")
+  type        String
+  description String?
+  targetAmount Decimal? @map("target_amount") @db.Decimal(18, 2)
+  targetDate  DateTime? @map("target_date")
+
+  household Household @relation(fields: [householdId], references: [id])
+
+  @@map("goals")
+}
+
+/// PRD §18 — existing policies the client already holds.
+model Coverage {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  clientProfileId  String   @map("client_profile_id")
+  category         String
+  subtype          String
+  insuredPersonId  String   @map("insured_person_id")
+  beneficiaryType  String?  @map("beneficiary_type")
+  amount           Decimal? @db.Decimal(18, 2)
+  monthlyBenefit   Decimal? @map("monthly_benefit") @db.Decimal(18, 2)
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+  waitingPeriodDays Int?    @map("waiting_period_days")
+  verified         Boolean
+  source           String
+  exclusionsKnown  Boolean  @map("exclusions_known")
+  notes            String?
+
+  clientProfile ClientProfile @relation(fields: [clientProfileId], references: [id])
+
+  @@map("coverages")
+}
+
+model QuestionnaireSession {
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  clientProfileId      String   @map("client_profile_id")
+  questionnaireVersion String   @map("questionnaire_version")
+  status               String
+  completionScore      Decimal  @map("completion_score") @db.Decimal(5, 4)
+
+  clientProfile ClientProfile @relation(fields: [clientProfileId], references: [id])
+  answers       Answer[]
+
+  @@map("questionnaire_sessions")
+}
+
+model Answer {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  sessionId        String   @map("session_id")
+  questionId       String   @map("question_id")
+  questionVersion  Int      @map("question_version")
+  rawValue         Json     @map("raw_value")
+  answeredAt       DateTime @map("answered_at")
+
+  session QuestionnaireSession @relation(fields: [sessionId], references: [id])
+
+  @@map("answers")
+}
+
+/// PRD §8 — normalized facts derived from Answers/documents/integrations.
+model Fact {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  clientProfileId String  @map("client_profile_id")
+  key            String
+  value          Json
+  source         String
+  confidence     Decimal  @db.Decimal(5, 4)
+  verified       Boolean
+  effectiveDate  DateTime? @map("effective_date")
+
+  @@index([clientProfileId, key])
+  @@map("facts")
+}
+
+model Recommendation {
+  id                     String   @id @default(uuid())
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  clientProfileId        String   @map("client_profile_id")
+  category               String
+  title                  String
+  status                 String
+  priorityScore          Int      @map("priority_score")
+  priorityBand           String   @map("priority_band")
+  needAmount             Decimal? @map("need_amount") @db.Decimal(18, 2)
+  existingAmount         Decimal? @map("existing_amount") @db.Decimal(18, 2)
+  gapAmount              Decimal? @map("gap_amount") @db.Decimal(18, 2)
+  recommendedMin         Decimal? @map("recommended_min") @db.Decimal(18, 2)
+  recommendedTarget      Decimal? @map("recommended_target") @db.Decimal(18, 2)
+  recommendedMax         Decimal? @map("recommended_max") @db.Decimal(18, 2)
+  monthlyBenefitTarget   Decimal? @map("monthly_benefit_target") @db.Decimal(18, 2)
+  horizon                Json?
+  reviewTriggers         Json     @map("review_triggers")
+  rationale              Json
+  reasonCodes            Json     @map("reason_codes")
+  missingFacts           Json     @map("missing_facts")
+  assumptions            Json
+  warnings               Json
+  confidence             String
+  calculationTraceId     String   @map("calculation_trace_id")
+  explainabilityComplete Boolean  @map("explainability_complete")
+  ruleEngineVersion      String   @map("rule_engine_version")
+  questionnaireVersion   String   @map("questionnaire_version")
+  policyCatalogVersion   String?  @map("policy_catalog_version")
+  inputSnapshotHash      String   @map("input_snapshot_hash")
+
+  clientProfile ClientProfile @relation(fields: [clientProfileId], references: [id])
+
+  @@map("recommendations")
+}
+
+model CalculationTrace {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  calculatorKey     String   @map("calculator_key")
+  ruleEngineVersion String?  @map("rule_engine_version")
+  configVersion     String   @map("config_version")
+  lines             Json
+  resultExact       String   @map("result_exact")
+
+  @@map("calculation_traces")
+}
+
+model RuleExecution {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  ruleId            String   @map("rule_id")
+  ruleVersion       Int      @map("rule_version")
+  matched           Boolean
+  reason            String
+  factsUsed         Json     @map("facts_used")
+
+  @@map("rule_executions")
+}
+
+model Scenario {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  clientProfileId String   @map("client_profile_id")
+  name            String
+  overrides       Json
+
+  clientProfile ClientProfile @relation(fields: [clientProfileId], references: [id])
+
+  @@map("scenarios")
+}
+
+model Report {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  clientProfileId String   @map("client_profile_id")
+  engineVersion   String   @map("engine_version")
+  content         Json
+
+  clientProfile ClientProfile @relation(fields: [clientProfileId], references: [id])
+
+  @@map("reports")
+}
+
+model Consent {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  userId     String   @map("user_id")
+  type       String
+  version    String
+  accepted   Boolean
+  acceptedAt DateTime @map("accepted_at")
+  ipHash     String?  @map("ip_hash")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("consents")
+}
+
+model AuditEvent {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now()) @map("created_at")
+  actorType         String   @map("actor_type")
+  actorId           String?  @map("actor_id")
+  action            String
+  entityType        String   @map("entity_type")
+  entityId          String   @map("entity_id")
+  beforeHash        String?  @map("before_hash")
+  afterHash         String?  @map("after_hash")
+  ruleEngineVersion String?  @map("rule_engine_version")
+
+  @@map("audit_events")
+}
+
+model ConfigVersion {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  version        String   @unique
+  effectiveFrom  DateTime @map("effective_from")
+  config         Json
+  publishedBy    String?  @map("published_by")
+
+  @@map("config_versions")
+}
+
+/// Sensitive: PRD §26.2 flags this table for encryption/masking at rest.
+/// Placeholder only — no identifier types are collected/used in Milestone 1.
+model Identifier {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  userId    String   @map("user_id")
+  type      String
+  value     String
+
+  @@map("identifiers")
+}
+
+/// Sensitive: PRD §26.2 flags this table for encryption/masking at rest.
+/// Placeholder only — document upload/OCR is explicitly Phase 2 (PRD §3.2).
+model Document {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  clientProfileId String   @map("client_profile_id")
+  storageRef      String   @map("storage_ref")
+  documentType    String   @map("document_type")
+
+  @@map("documents")
+}

@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: insurance_advisor
+      POSTGRES_PASSWORD: insurance_advisor_dev_only
+      POSTGRES_DB: insurance_advisor
+    ports:
+      - "5433:5432"
+    volumes:
+      - insurance_advisor_db_data:/var/lib/postgresql/data
+
+volumes:
+  insurance_advisor_db_data:
