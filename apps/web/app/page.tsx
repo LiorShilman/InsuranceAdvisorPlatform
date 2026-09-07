@@ -4,8 +4,10 @@ import type { CalculationTrace } from "@insurance-advisor/shared";
 import {
   LifeInsuranceCalculator,
   DisabilityInsuranceCalculator,
+  CriticalIllnessCalculator,
   fromHouseholdFixture,
   fromHouseholdFixtureForDisability,
+  fromHouseholdFixtureForCriticalIllness,
 } from "@insurance-advisor/calculators";
 
 const REASON_CODE_LABELS: Record<string, string> = {
@@ -15,6 +17,8 @@ const REASON_CODE_LABELS: Record<string, string> = {
   LIFE_EXISTING_COVERAGE_SUFFICIENT: "הכיסוי הקיים מספיק לצורך המחושב",
   DI_INCOME_DEPENDENCY: "תלות בהכנסה השוטפת",
   DI_EXISTING_MONTHLY_GAP: "פער חודשי מול הכיסוי הקיים",
+  CI_LOW_LIQUID_BUFFER: "נדרשת רזרבה נזילה לתקופת ההתאוששות",
+  CI_EXISTING_COVERAGE_PRESENT: "קיים כיסוי מחלות קשות",
 };
 
 const CONFIDENCE_LABELS: Record<string, string> = {
@@ -44,8 +48,9 @@ function ResultCard(props: {
   note?: string;
   missingFacts: string[];
   trace: CalculationTrace;
+  extraContent?: React.ReactNode;
 }) {
-  const { title, badges, confidence, reasonCodes, figures, note, missingFacts, trace } = props;
+  const { title, badges, confidence, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
   return (
     <section className="card">
       <h2>{title}</h2>
@@ -79,6 +84,8 @@ function ResultCard(props: {
         <p className="missing">נתונים חסרים (הוחלף בהנחת 0 עד להשלמה): {missingFacts.join(", ")}</p>
       )}
 
+      {extraContent}
+
       <details>
         <summary>איך חושב הפער? (Calculation trace)</summary>
         <table className="trace">
@@ -106,6 +113,8 @@ function ResultCard(props: {
 
 const lifeCalculator = new LifeInsuranceCalculator();
 const disabilityCalculator = new DisabilityInsuranceCalculator();
+const criticalIllnessCalculator = new CriticalIllnessCalculator();
+const CI_HEADLINE_DURATION_MONTHS = 6;
 // Fixed "now" so the preview is deterministic across runs/reviewers, matching the fixtures' own reference date.
 const NOW = new Date("2026-09-07T00:00:00.000Z");
 
@@ -114,8 +123,8 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3 (PRD §12-13, §48) · מריץ את מחשבוני ביטוח חיים ואבדן כושר עבודה על 5 פרופילי בדיקה ישירות מהקוד —
-        ללא שאלון, ללא API, ללא אחסון.
+        Milestone 3 (PRD §12-14, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה ומחלות קשות על 5 פרופילי בדיקה
+        ישירות מהקוד — ללא שאלון, ללא API, ללא אחסון.
       </p>
 
       <div className="banner">
@@ -130,6 +139,13 @@ export default function PreviewPage() {
 
         const disabilityInput = fromHouseholdFixtureForDisability(fixture, {}, NOW);
         const disability = disabilityCalculator.calculate(disabilityInput, STARTER_ENGINE_CONFIG);
+
+        const ciInput = fromHouseholdFixtureForCriticalIllness(fixture);
+        const ciScenarios = criticalIllnessCalculator.calculateScenarios(ciInput, STARTER_ENGINE_CONFIG);
+        const ciHeadline = ciScenarios.find((s) => s.recoveryDurationMonths === CI_HEADLINE_DURATION_MONTHS) ?? ciScenarios[0];
+        if (!ciHeadline) {
+          return null; // unreachable — RECOVERY_DURATION_OPTIONS_MONTHS is never empty
+        }
 
         return (
           <div key={fixture.name}>
@@ -169,6 +185,35 @@ export default function PreviewPage() {
               ]}
               missingFacts={disability.result.missingFacts}
               trace={disability.trace}
+            />
+
+            <ResultCard
+              title="ביטוח מחלות קשות"
+              badges={[`תרחיש מוצג: התאוששות ${ciHeadline.recoveryDurationMonths} חודשים`]}
+              confidence={ciHeadline.result.confidence}
+              reasonCodes={ciHeadline.result.reasonCodes}
+              figures={[
+                { label: "צורך חד-פעמי (ברוטו)", amountExact: ciHeadline.result.need.toExactString() },
+                { label: "כיסוי קיים", amountExact: ciHeadline.result.existingCoverage.toExactString() },
+                { label: "פער מומלץ", amountExact: ciHeadline.result.gap.toExactString(), emphasize: true },
+              ]}
+              missingFacts={ciHeadline.result.missingFacts}
+              trace={ciHeadline.trace}
+              extraContent={
+                <details>
+                  <summary>השוואת תרחישי משך התאוששות (PRD §14)</summary>
+                  <table className="trace">
+                    <tbody>
+                      {ciScenarios.map((s) => (
+                        <tr key={s.recoveryDurationMonths}>
+                          <td>{s.recoveryDurationMonths} חודשים</td>
+                          <td className="amount">{formatExact(s.result.gap.toExactString())}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              }
             />
           </div>
         );

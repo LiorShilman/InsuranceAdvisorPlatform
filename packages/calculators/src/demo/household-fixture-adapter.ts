@@ -2,6 +2,7 @@ import { Money } from "@insurance-advisor/shared";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import type { LifeCalculatorInput } from "../life-insurance-calculator.js";
 import type { DisabilityCalculatorInput } from "../disability-insurance-calculator.js";
+import type { CriticalIllnessCalculatorInput } from "../critical-illness-calculator.js";
 
 /**
  * DEMO/TEST ADAPTERS ONLY — not the real pipeline.
@@ -113,6 +114,35 @@ export function fromHouseholdFixtureForDisability(
     reliableMonthlyIncomeDuringDisability,
     currentAge: ageOnDate(fixture.primaryPerson.dateOfBirth, now),
     retirementAge: fixture.primaryPerson.retirementAge,
+    ...overrides,
+  };
+}
+
+/**
+ * DEMO ADAPTER ONLY. `existingCriticalIllnessCoverage` always comes out
+ * `undefined` — none of the 5 fixtures have a `category: "critical_illness"`
+ * coverage row — same "genuinely unknown, not a bug" situation as the
+ * disability adapter above. `reliableMonthlyIncomeDuringRecovery` reuses
+ * each fixture's `reliableIfDisabled` income flag as a stand-in for
+ * "would this income continue during critical-illness recovery" — the
+ * fixtures don't model a separate flag for that, and disability is the
+ * closest existing proxy (see docs/DECISIONS.md).
+ */
+export function fromHouseholdFixtureForCriticalIllness(
+  fixture: HouseholdFixture,
+  overrides: Partial<CriticalIllnessCalculatorInput> = {},
+): Omit<CriticalIllnessCalculatorInput, "recoveryDurationMonths"> {
+  const monthlyEssentialExpenses = fixture.expenses
+    .filter((e) => e.essential)
+    .reduce((sum, e) => sum.add(e.monthlyAmount), Money.zero());
+
+  const reliableMonthlyIncomeDuringRecovery = fixture.incomeSources
+    .filter((i) => i.reliableIfDisabled)
+    .reduce((sum, i) => sum.add(i.netMonthlyAmount), Money.zero());
+
+  return {
+    monthlyEssentialExpenses,
+    reliableMonthlyIncomeDuringRecovery,
     ...overrides,
   };
 }
