@@ -1,4 +1,5 @@
 import { Money, type Assumption, type CalculationTrace, type CalculationTraceLine } from "@insurance-advisor/shared";
+import type { ReviewTrigger } from "@insurance-advisor/domain";
 import type { EngineConfig } from "@insurance-advisor/config";
 import type { CalculatorResult, NeedsCalculator } from "./calculator.js";
 
@@ -27,7 +28,7 @@ export type LongTermCareResult = {
   capitalNeed: Money;
   expectedDurationYears: number;
   reasonCodes: string[];
-  reviewTriggers: string[];
+  reviewTriggers: ReviewTrigger[];
   missingFacts: string[];
   assumptions: Assumption[];
   confidence: "high" | "medium" | "low";
@@ -129,7 +130,7 @@ export class LongTermCareCalculator implements NeedsCalculator<LongTermCareCalcu
       reasonCodes.push("LTC_SELF_FUNDING_CAPACITY_HIGH");
     }
 
-    const reviewTriggers = ["annual_review", "major_health_change", "major_asset_change"];
+    const reviewTriggers: ReviewTrigger[] = ["annual_review", "major_health_change", "major_asset_change"];
 
     const trace: CalculationTrace = {
       id: newId(),

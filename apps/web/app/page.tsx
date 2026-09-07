@@ -1,6 +1,6 @@
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import { ALL_HOUSEHOLD_FIXTURES } from "@insurance-advisor/test-fixtures";
-import type { CalculationTrace } from "@insurance-advisor/shared";
+import { Money, type CalculationTrace } from "@insurance-advisor/shared";
 import type { HealthCoverageModule, InsuranceCategory } from "@insurance-advisor/domain";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import {
@@ -11,6 +11,8 @@ import {
   LongTermCareCalculator,
   CoverageDeduplicationEngine,
   PriorityEngine,
+  RecommendationBuilder,
+  ReviewScheduler,
   type DeduplicationResult,
   fromHouseholdFixture,
   fromHouseholdFixtureForDisability,
@@ -69,6 +71,14 @@ function priorityBadgeText(band: string, score: number): string {
   return `עדיפות: ${PRIORITY_BAND_LABELS[band] ?? band} (${score})`;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  recommended: "מומלץ",
+  consider: "לשקול",
+  not_needed: "לא נדרש",
+  review_existing: "לבדוק כיסוי קיים",
+  manual_review: "נדרשת בדיקה ידנית",
+};
+
 /** Does any flagged duplicate pair for this fixture involve a coverage of the given category? */
 function categoryHasDuplicateFlag(dedup: DeduplicationResult, fixture: HouseholdFixture, category: InsuranceCategory): boolean {
   const idsInCategory = new Set(fixture.coverages.filter((c) => c.category === category).map((c) => c.id));
@@ -92,6 +102,9 @@ function ResultCard(props: {
   badges: string[];
   confidence: "high" | "medium" | "low";
   priority?: { band: string; score: number };
+  status?: string;
+  nextReviewDate?: string;
+  rationale?: string[];
   reasonCodes: string[];
   figures: Figure[];
   note?: string;
@@ -99,7 +112,7 @@ function ResultCard(props: {
   trace: CalculationTrace;
   extraContent?: React.ReactNode;
 }) {
-  const { title, badges, confidence, priority, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
+  const { title, badges, confidence, priority, status, nextReviewDate, rationale, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
   return (
     <section className="card">
       <h2>{title}</h2>
@@ -108,6 +121,8 @@ function ResultCard(props: {
         {priority && (
           <span className={`badge priority-${priority.band}`}>{priorityBadgeText(priority.band, priority.score)}</span>
         )}
+        {status && <span className="badge">סטטוס: {STATUS_LABELS[status] ?? status}</span>}
+        {nextReviewDate && <span className="badge next-review">🗓 בדיקה הבאה: {nextReviewDate}</span>}
         <span className={`badge confidence-${confidence}`}>אמינות נתונים: {CONFIDENCE_LABELS[confidence]}</span>
         {badges.map((b) => (
           <span className="badge" key={b}>
@@ -129,6 +144,12 @@ function ResultCard(props: {
           </div>
         ))}
       </div>
+
+      {rationale?.map((r) => (
+        <p key={r} style={{ fontSize: "0.9rem" }}>
+          {r}
+        </p>
+      ))}
 
       {note && <p style={{ fontSize: "0.86rem", color: "var(--muted)" }}>{note}</p>}
 
@@ -202,6 +223,8 @@ const healthModuleAssessor = new HealthModuleAssessor();
 const longTermCareCalculator = new LongTermCareCalculator();
 const deduplicationEngine = new CoverageDeduplicationEngine();
 const priorityEngine = new PriorityEngine();
+const recommendationBuilder = new RecommendationBuilder();
+const reviewScheduler = new ReviewScheduler();
 const CI_HEADLINE_DURATION_MONTHS = 6;
 const LTC_HEADLINE_DURATION_YEARS = 3;
 // Fixed "now" so the preview is deterministic across runs/reviewers, matching the fixtures' own reference date.
@@ -212,9 +235,9 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3-5 (PRD §12-21 בחלקן, §48) · מחשבוני ביטוח חיים / אבדן כושר עבודה / מחלות קשות / סיעוד, מנוע הערכת
-        מודולי הבריאות, בדיקת כפילויות, ומנוע העדפות (Priority Engine, §19) שמדרג כל צורך — על 5 פרופילי בדיקה ישירות
-        מהקוד, ללא שאלון, ללא API, ללא אחסון.
+        Milestone 3-5 (PRD §12-22 בחלקן, §48) · מחשבוני ביטוח חיים / אבדן כושר עבודה / מחלות קשות / סיעוד, מנוע הערכת
+        מודולי הבריאות, בדיקת כפילויות, מנוע עדיפויות (§19), הרכבת אובייקט המלצה (§21), ותאריך בדיקה הבא (§22, התג
+        הכחול) — על 5 פרופילי בדיקה ישירות מהקוד, ללא שאלון, ללא API, ללא אחסון.
       </p>
 
       <div className="banner">
@@ -293,6 +316,89 @@ export default function PreviewPage() {
           STARTER_ENGINE_CONFIG,
         );
 
+        const lifeRecommendation = recommendationBuilder.build(
+          {
+            clientProfileId: fixture.clientProfile.id,
+            category: "life",
+            title: "ביטוח חיים",
+            needAmount: life.result.grossNeed,
+            existingAmount: life.result.availableResources,
+            gapAmount: life.result.gap,
+            horizon: { type: "years", value: life.result.horizonYears },
+            reasonCodes: life.result.reasonCodes,
+            reviewTriggers: life.result.reviewTriggers,
+            missingFacts: life.result.missingFacts,
+            assumptions: life.result.assumptions,
+            confidence: life.result.confidence,
+            calculationTraceId: life.trace.id,
+            priority: lifePriority,
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+
+        const disabilityRecommendation = recommendationBuilder.build(
+          {
+            clientProfileId: fixture.clientProfile.id,
+            category: "disability",
+            title: "ביטוח אבדן כושר עבודה",
+            needAmount: disability.result.requiredMonthlyIncome,
+            existingAmount: disability.result.existingNetExpectedDisabilityIncome,
+            gapAmount: disability.result.monthlyGap,
+            monthlyBenefitTarget: disability.result.monthlyGap,
+            horizon:
+              disability.result.recommendedDurationYears !== undefined
+                ? { type: "years", value: disability.result.recommendedDurationYears }
+                : undefined,
+            reasonCodes: disability.result.reasonCodes,
+            reviewTriggers: disability.result.reviewTriggers,
+            missingFacts: disability.result.missingFacts,
+            assumptions: disability.result.assumptions,
+            confidence: disability.result.confidence,
+            calculationTraceId: disability.trace.id,
+            priority: disabilityPriority,
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+
+        const ciRecommendation = recommendationBuilder.build(
+          {
+            clientProfileId: fixture.clientProfile.id,
+            category: "critical_illness",
+            title: "ביטוח מחלות קשות",
+            needAmount: ciHeadline.result.need,
+            existingAmount: ciHeadline.result.existingCoverage,
+            gapAmount: ciHeadline.result.gap,
+            reasonCodes: ciHeadline.result.reasonCodes,
+            reviewTriggers: ciHeadline.result.reviewTriggers,
+            missingFacts: ciHeadline.result.missingFacts,
+            assumptions: ciHeadline.result.assumptions,
+            confidence: ciHeadline.result.confidence,
+            calculationTraceId: ciHeadline.trace.id,
+            priority: ciPriority,
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+
+        const ltcRecommendation = recommendationBuilder.build(
+          {
+            clientProfileId: fixture.clientProfile.id,
+            category: "ltc",
+            title: "ביטוח סיעודי",
+            needAmount: ltcHeadline.result.capitalNeed,
+            existingAmount: Money.zero(),
+            gapAmount: ltcHeadline.result.capitalNeed,
+            horizon: { type: "years", value: ltcHeadline.expectedDurationYears },
+            reasonCodes: ltcHeadline.result.reasonCodes,
+            reviewTriggers: ltcHeadline.result.reviewTriggers,
+            missingFacts: ltcHeadline.result.missingFacts,
+            assumptions: ltcHeadline.result.assumptions,
+            confidence: ltcHeadline.result.confidence,
+            calculationTraceId: ltcHeadline.trace.id,
+            priority: ltcPriority,
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+
         return (
           <div key={fixture.name}>
             <h2 style={{ marginBottom: 2 }}>{fixture.name}</h2>
@@ -305,6 +411,9 @@ export default function PreviewPage() {
               badges={[`טווח הגנה: ${life.result.horizonYears} שנים`]}
               confidence={life.result.confidence}
               priority={lifePriority}
+              status={lifeRecommendation.status}
+              rationale={lifeRecommendation.rationale}
+              nextReviewDate={reviewScheduler.nextReviewDate(lifeRecommendation, NOW)}
               reasonCodes={life.result.reasonCodes}
               figures={[
                 { label: "צורך חישובי (ברוטו)", amountExact: life.result.grossNeed.toExactString() },
@@ -325,6 +434,9 @@ export default function PreviewPage() {
               ]}
               confidence={disability.result.confidence}
               priority={disabilityPriority}
+              status={disabilityRecommendation.status}
+              rationale={disabilityRecommendation.rationale}
+              nextReviewDate={reviewScheduler.nextReviewDate(disabilityRecommendation, NOW)}
               reasonCodes={disability.result.reasonCodes}
               figures={[
                 { label: "הכנסה חודשית נדרשת", amountExact: disability.result.requiredMonthlyIncome.toExactString() },
@@ -340,6 +452,9 @@ export default function PreviewPage() {
               badges={[`תרחיש מוצג: התאוששות ${ciHeadline.recoveryDurationMonths} חודשים`]}
               confidence={ciHeadline.result.confidence}
               priority={ciPriority}
+              status={ciRecommendation.status}
+              rationale={ciRecommendation.rationale}
+              nextReviewDate={reviewScheduler.nextReviewDate(ciRecommendation, NOW)}
               reasonCodes={ciHeadline.result.reasonCodes}
               figures={[
                 { label: "צורך חד-פעמי (ברוטו)", amountExact: ciHeadline.result.need.toExactString() },
@@ -372,6 +487,9 @@ export default function PreviewPage() {
               badges={[`תרחיש מוצג: תוחלת ${ltcHeadline.expectedDurationYears} שנים`]}
               confidence={ltcHeadline.result.confidence}
               priority={ltcPriority}
+              status={ltcRecommendation.status}
+              rationale={ltcRecommendation.rationale}
+              nextReviewDate={reviewScheduler.nextReviewDate(ltcRecommendation, NOW)}
               reasonCodes={ltcHeadline.result.reasonCodes}
               figures={[
                 { label: "פער חודשי בעלות טיפול", amountExact: ltcHeadline.result.monthlyGap.toExactString() },

@@ -1,4 +1,5 @@
 import { Money, type Assumption, type CalculationTrace, type CalculationTraceLine } from "@insurance-advisor/shared";
+import type { ReviewTrigger } from "@insurance-advisor/domain";
 import type { EngineConfig } from "@insurance-advisor/config";
 import type { CalculatorResult, NeedsCalculator } from "./calculator.js";
 
@@ -57,7 +58,7 @@ export type LifeInsuranceResult = {
   recommendedRange: { min: Money; target: Money; max: Money };
   horizonYears: number;
   reasonCodes: string[];
-  reviewTriggers: string[];
+  reviewTriggers: ReviewTrigger[];
   missingFacts: string[];
   assumptions: Assumption[];
   confidence: "high" | "medium" | "low";
@@ -263,7 +264,7 @@ export class LifeInsuranceCalculator implements NeedsCalculator<LifeCalculatorIn
     if (gap.isZero() && !grossNeed.isZero()) reasonCodes.push("LIFE_EXISTING_COVERAGE_SUFFICIENT");
 
     // ---- Review triggers (PRD §22) ----
-    const reviewTriggers: string[] = ["annual_review", "income_change_20pct"];
+    const reviewTriggers: ReviewTrigger[] = ["annual_review", "income_change_20pct"];
     if (input.mortgage) reviewTriggers.push("mortgage_repaid");
     if (input.dependentCount > 0) reviewTriggers.push("child_independent");
 

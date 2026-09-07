@@ -150,6 +150,13 @@ h1 {
   color: var(--muted);
 }
 
+.badge.next-review {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+  font-weight: 600;
+}
+
 details {
   margin-top: 10px;
   border-top: 1px solid var(--border);

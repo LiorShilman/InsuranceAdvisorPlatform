@@ -1,4 +1,5 @@
 import { Money, type Assumption, type CalculationTrace, type CalculationTraceLine } from "@insurance-advisor/shared";
+import type { ReviewTrigger } from "@insurance-advisor/domain";
 import type { EngineConfig } from "@insurance-advisor/config";
 import type { CalculatorResult, NeedsCalculator } from "./calculator.js";
 
@@ -32,7 +33,7 @@ export type DisabilityInsuranceResult = {
   monthlyGap: Money;
   recommendedDurationYears?: number;
   reasonCodes: string[];
-  reviewTriggers: string[];
+  reviewTriggers: ReviewTrigger[];
   missingFacts: string[];
   assumptions: Assumption[];
   confidence: "high" | "medium" | "low";
@@ -144,7 +145,7 @@ export class DisabilityInsuranceCalculator
     if (!requiredMonthlyIncome.isZero()) reasonCodes.push("DI_INCOME_DEPENDENCY");
     if (!monthlyGap.isZero()) reasonCodes.push("DI_EXISTING_MONTHLY_GAP");
 
-    const reviewTriggers = ["annual_review", "income_change_20pct", "job_change"];
+    const reviewTriggers: ReviewTrigger[] = ["annual_review", "income_change_20pct", "job_change"];
 
     const trace: CalculationTrace = {
       id: newId(),

@@ -2,6 +2,32 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Review scheduler + Recommendation object wiring — Milestone 5 done
+
+1. **`ReviewScheduler` computes one concrete date, not a calendar/notification
+   system.** PRD §22's "lifecycle" is really two things: (a) *what event*
+   should trigger a fresh look (already covered by `reviewTriggers`, e.g.
+   `mortgage_repaid`, `income_change_20pct`) and (b) *by when*, at the
+   latest, should it be looked at regardless. This only computes (b) — the
+   earlier of "one year from now" (if `annual_review` is a trigger, which
+   every calculator always includes) and "the recommendation's own horizon
+   end". No persistence, no actual scheduled job that fires on that date —
+   there's nowhere for it to write to yet.
+2. **`RecommendationBuilder` output is now wired into all four money-based
+   preview cards** (status badge, rationale sentence, next-review-date
+   badge) — the `Recommendation` entity (§21) is no longer just a tested
+   type, it's visibly driving the UI.
+3. **`reviewTriggers` changed from `string[]` to the real domain
+   `ReviewTrigger[]`** on all four calculators' result types (was a loose
+   string array that happened to contain valid enum values) — caught while
+   wiring `RecommendationBuilder`, which needed the real type rather than
+   an `as never` cast to satisfy `Recommendation.reviewTriggers`.
+4. This completes Milestone 5 (PRD §45: gap engine, priority, budget,
+   lifecycle) on top of Milestones 1-4. Next per the PRD's own sequence is
+   Milestone 2, the Adaptive Questionnaire (§7, §49) — the piece that lets
+   a real user's answers replace the hardcoded test fixtures every
+   calculator has been driven by so far.
+
 ## 2026-09-08 — Priority Engine + Budget/Affordability layer (PRD §19-20)
 
 1. **`priorityWeights` changed from a loose `Record<string, number>` to a

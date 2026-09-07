@@ -1,4 +1,5 @@
 import { Money, type Assumption, type CalculationTrace, type CalculationTraceLine } from "@insurance-advisor/shared";
+import type { ReviewTrigger } from "@insurance-advisor/domain";
 import type { EngineConfig } from "@insurance-advisor/config";
 import type { CalculatorResult, NeedsCalculator } from "./calculator.js";
 
@@ -32,7 +33,7 @@ export type CriticalIllnessResult = {
   gap: Money;
   recoveryDurationMonths: number;
   reasonCodes: string[];
-  reviewTriggers: string[];
+  reviewTriggers: ReviewTrigger[];
   missingFacts: string[];
   assumptions: Assumption[];
   confidence: "high" | "medium" | "low";
@@ -137,7 +138,7 @@ export class CriticalIllnessCalculator implements NeedsCalculator<CriticalIllnes
     if (!gap.isZero()) reasonCodes.push("CI_LOW_LIQUID_BUFFER");
     if (!existingCoverage.isZero()) reasonCodes.push("CI_EXISTING_COVERAGE_PRESENT");
 
-    const reviewTriggers = ["annual_review", "major_health_change"];
+    const reviewTriggers: ReviewTrigger[] = ["annual_review", "major_health_change"];
 
     const trace: CalculationTrace = {
       id: newId(),

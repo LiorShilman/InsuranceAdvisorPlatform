@@ -7,5 +7,7 @@ export * from "./long-term-care-calculator.js";
 export * from "./coverage-deduplication-engine.js";
 export * from "./priority-engine.js";
 export * from "./budget-affordability-engine.js";
+export * from "./recommendation-builder.js";
+export * from "./review-scheduler.js";
 
 export * from "./demo/household-fixture-adapter.js";
