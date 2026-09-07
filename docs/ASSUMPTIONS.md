@@ -104,6 +104,39 @@ something concrete to start tuning.
   coverage (an old expired policy replaced by a new one) as a "duplicate".
   No real product/actuarial review of these numbers.
 
+## Priority Engine
+
+- `priorityWeights` (severity=20, probability=15, dependency=15, gap=25,
+  irreplaceability=15, urgency=10, existingCoverage=30) — invented,
+  calibrated only so the six positive terms sum to exactly 100 at their
+  maximum (all factors at 1.0). No real weighting study behind these
+  ratios (e.g. why gap=25 rather than severity=25).
+- `categoryRiskProfile` — invented per-category 0..1 placeholders for
+  severity/exposure/irrecoverability/urgency. `severity` and `exposure`
+  are currently identical for every category (no real differentiation
+  between "how bad if it happens" and "how likely it happens" yet).
+- `priorityBands` cutoffs (80/60/40/20) — taken directly from the PRD's
+  own §19.2 example numbers, not independently derived.
+- `dependencyWeight`'s "no dependents" multiplier is `0.3`, not `0` —
+  invented; a household with no current dependents still has *some*
+  protection value (self/estate/debt), so zero felt wrong, but 0.3 itself
+  is not derived from anything.
+
+## Budget/Affordability engine
+
+- `affordability.assumedAnnualPremiumRatePer1000Coverage = 3` — NOT a real
+  insurance premium rate. Chosen specifically to reproduce the PRD's own
+  §20 example exactly (a monthly budget of 300 ILS buys exactly
+  1,200,000 ILS of coverage) as a golden test, not because it reflects
+  actual term-life pricing in any market. Must be replaced by real
+  Product Matching/insurer pricing before this layer is ever shown to a
+  real user — see docs/REGULATORY-TODO.md.
+- `affordability.maxAffordabilityPenaltyPoints = 20` — invented, chosen to
+  be meaningfully smaller than a full category's positive-factor range
+  (100) so an unaffordable need still shows as elevated priority, not
+  suppressed to zero (PRD §43 safety test: "suppresses uninsured gap
+  because budget is too low" must fail the build).
+
 ## Known dependency vulnerabilities (not remediated)
 
 `npm audit` reports 7 advisories (moderate→critical) as of this milestone:

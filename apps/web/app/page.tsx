@@ -1,7 +1,8 @@
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import { ALL_HOUSEHOLD_FIXTURES } from "@insurance-advisor/test-fixtures";
 import type { CalculationTrace } from "@insurance-advisor/shared";
-import type { HealthCoverageModule } from "@insurance-advisor/domain";
+import type { HealthCoverageModule, InsuranceCategory } from "@insurance-advisor/domain";
+import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import {
   LifeInsuranceCalculator,
   DisabilityInsuranceCalculator,
@@ -9,6 +10,8 @@ import {
   HealthModuleAssessor,
   LongTermCareCalculator,
   CoverageDeduplicationEngine,
+  PriorityEngine,
+  type DeduplicationResult,
   fromHouseholdFixture,
   fromHouseholdFixtureForDisability,
   fromHouseholdFixtureForCriticalIllness,
@@ -54,6 +57,24 @@ const CONFIDENCE_LABELS: Record<string, string> = {
   low: "נמוכה",
 };
 
+const PRIORITY_BAND_LABELS: Record<string, string> = {
+  CRITICAL: "קריטי",
+  HIGH: "גבוה",
+  MEDIUM: "בינוני",
+  LOW: "נמוך",
+  INFORMATIONAL: "מידע בלבד",
+};
+
+function priorityBadgeText(band: string, score: number): string {
+  return `עדיפות: ${PRIORITY_BAND_LABELS[band] ?? band} (${score})`;
+}
+
+/** Does any flagged duplicate pair for this fixture involve a coverage of the given category? */
+function categoryHasDuplicateFlag(dedup: DeduplicationResult, fixture: HouseholdFixture, category: InsuranceCategory): boolean {
+  const idsInCategory = new Set(fixture.coverages.filter((c) => c.category === category).map((c) => c.id));
+  return dedup.flags.some((f) => idsInCategory.has(f.coverageIdA) || idsInCategory.has(f.coverageIdB));
+}
+
 const currencyFormatter = new Intl.NumberFormat("he-IL", {
   style: "currency",
   currency: "ILS",
@@ -70,6 +91,7 @@ function ResultCard(props: {
   title: string;
   badges: string[];
   confidence: "high" | "medium" | "low";
+  priority?: { band: string; score: number };
   reasonCodes: string[];
   figures: Figure[];
   note?: string;
@@ -77,12 +99,15 @@ function ResultCard(props: {
   trace: CalculationTrace;
   extraContent?: React.ReactNode;
 }) {
-  const { title, badges, confidence, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
+  const { title, badges, confidence, priority, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
   return (
     <section className="card">
       <h2>{title}</h2>
 
       <div className="badges">
+        {priority && (
+          <span className={`badge priority-${priority.band}`}>{priorityBadgeText(priority.band, priority.score)}</span>
+        )}
         <span className={`badge confidence-${confidence}`}>אמינות נתונים: {CONFIDENCE_LABELS[confidence]}</span>
         {badges.map((b) => (
           <span className="badge" key={b}>
@@ -176,6 +201,7 @@ const criticalIllnessCalculator = new CriticalIllnessCalculator();
 const healthModuleAssessor = new HealthModuleAssessor();
 const longTermCareCalculator = new LongTermCareCalculator();
 const deduplicationEngine = new CoverageDeduplicationEngine();
+const priorityEngine = new PriorityEngine();
 const CI_HEADLINE_DURATION_MONTHS = 6;
 const LTC_HEADLINE_DURATION_YEARS = 3;
 // Fixed "now" so the preview is deterministic across runs/reviewers, matching the fixtures' own reference date.
@@ -186,9 +212,9 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3-4 (PRD §12-16 + §18, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה, מחלות קשות, סיעוד, את
-        מנוע הערכת מודולי הבריאות ואת בדיקת הכפילויות בין כיסויים קיימים — על 5 פרופילי בדיקה ישירות מהקוד, ללא
-        שאלון, ללא API, ללא אחסון.
+        Milestone 3-5 (PRD §12-21 בחלקן, §48) · מחשבוני ביטוח חיים / אבדן כושר עבודה / מחלות קשות / סיעוד, מנוע הערכת
+        מודולי הבריאות, בדיקת כפילויות, ומנוע העדפות (Priority Engine, §19) שמדרג כל צורך — על 5 פרופילי בדיקה ישירות
+        מהקוד, ללא שאלון, ללא API, ללא אחסון.
       </p>
 
       <div className="banner">
@@ -223,6 +249,50 @@ export default function PreviewPage() {
 
         const dedup = deduplicationEngine.detect(fixture.coverages, STARTER_ENGINE_CONFIG);
 
+        const hasDependents = lifeInput.dependentCount > 0;
+
+        const lifePriority = priorityEngine.score(
+          {
+            category: "life",
+            ...PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber()),
+            hasDependents,
+            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "life"),
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+        const disabilityPriority = priorityEngine.score(
+          {
+            category: "disability",
+            ...PriorityEngine.gapRatioAndCoverageAdequacy(
+              disability.result.requiredMonthlyIncome.toNumber(),
+              disability.result.existingNetExpectedDisabilityIncome.toNumber(),
+            ),
+            hasDependents,
+            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "disability"),
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+        const ciPriority = priorityEngine.score(
+          {
+            category: "critical_illness",
+            ...PriorityEngine.gapRatioAndCoverageAdequacy(ciHeadline.result.need.toNumber(), ciHeadline.result.existingCoverage.toNumber()),
+            hasDependents,
+            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "critical_illness"),
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+        // LTC's capitalNeed is already net of benefits/self-funding (no separate raw need/existing pair to compare) —
+        // treated as a simple has-gap/no-gap signal rather than a proportional ratio. See docs/DECISIONS.md.
+        const ltcPriority = priorityEngine.score(
+          {
+            category: "ltc",
+            ...PriorityEngine.gapRatioAndCoverageAdequacy(ltcHeadline.result.capitalNeed.toNumber(), 0),
+            hasDependents,
+            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "ltc"),
+          },
+          STARTER_ENGINE_CONFIG,
+        );
+
         return (
           <div key={fixture.name}>
             <h2 style={{ marginBottom: 2 }}>{fixture.name}</h2>
@@ -234,6 +304,7 @@ export default function PreviewPage() {
               title="ביטוח חיים"
               badges={[`טווח הגנה: ${life.result.horizonYears} שנים`]}
               confidence={life.result.confidence}
+              priority={lifePriority}
               reasonCodes={life.result.reasonCodes}
               figures={[
                 { label: "צורך חישובי (ברוטו)", amountExact: life.result.grossNeed.toExactString() },
@@ -253,6 +324,7 @@ export default function PreviewPage() {
                   : "משך מומלץ: לא ידוע (חסרים נתוני גיל)",
               ]}
               confidence={disability.result.confidence}
+              priority={disabilityPriority}
               reasonCodes={disability.result.reasonCodes}
               figures={[
                 { label: "הכנסה חודשית נדרשת", amountExact: disability.result.requiredMonthlyIncome.toExactString() },
@@ -267,6 +339,7 @@ export default function PreviewPage() {
               title="ביטוח מחלות קשות"
               badges={[`תרחיש מוצג: התאוששות ${ciHeadline.recoveryDurationMonths} חודשים`]}
               confidence={ciHeadline.result.confidence}
+              priority={ciPriority}
               reasonCodes={ciHeadline.result.reasonCodes}
               figures={[
                 { label: "צורך חד-פעמי (ברוטו)", amountExact: ciHeadline.result.need.toExactString() },
@@ -298,6 +371,7 @@ export default function PreviewPage() {
               title="ביטוח סיעודי"
               badges={[`תרחיש מוצג: תוחלת ${ltcHeadline.expectedDurationYears} שנים`]}
               confidence={ltcHeadline.result.confidence}
+              priority={ltcPriority}
               reasonCodes={ltcHeadline.result.reasonCodes}
               figures={[
                 { label: "פער חודשי בעלות טיפול", amountExact: ltcHeadline.result.monthlyGap.toExactString() },

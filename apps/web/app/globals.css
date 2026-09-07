@@ -128,6 +128,28 @@ h1 {
   color: #a3341c;
 }
 
+.badge.priority-CRITICAL {
+  background: #f6d3cd;
+  color: #8a230f;
+  font-weight: 600;
+}
+.badge.priority-HIGH {
+  background: #fbe4e1;
+  color: #a3341c;
+}
+.badge.priority-MEDIUM {
+  background: #fdf1dc;
+  color: #8a5a10;
+}
+.badge.priority-LOW {
+  background: #eef1f4;
+  color: var(--muted);
+}
+.badge.priority-INFORMATIONAL {
+  background: #eef1f4;
+  color: var(--muted);
+}
+
 details {
   margin-top: 10px;
   border-top: 1px solid var(--border);

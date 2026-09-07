@@ -2,6 +2,48 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Priority Engine + Budget/Affordability layer (PRD §19-20)
+
+1. **`priorityWeights` changed from a loose `Record<string, number>` to a
+   named-field type.** A typo in a Record key would have silently produced
+   a zero-weight term with no compile error; the PRD explicitly warns
+   against "magic" unreviewed weights, and a typo-safe shape is a small,
+   free way to not compound that risk further.
+2. **`categoryRiskProfile` (severity/exposure/irrecoverability/urgency per
+   category) is a new config table**, following the exact same pattern as
+   `healthModuleDefaultNeedWhenMissing` and `duplicateDetection.weights` —
+   PRD §19.1 names these as formula inputs but gives no way to derive them
+   from calculator output, so they're config placeholders, not derived.
+   `severity` and `exposure` currently hold the same number per category
+   (no real differentiation yet) — flagged in docs/ASSUMPTIONS.md.
+3. **`gapRatio` and `coverageAdequacy` ARE derived honestly** from each
+   calculator's own need/existing amounts (via
+   `PriorityEngine.gapRatioAndCoverageAdequacy`) — these two inputs are not
+   invented, unlike the four category-baseline factors above.
+4. **`affordabilityPenalty` and `duplicateFlagged` are real signals**,
+   wired from the Budget/Affordability layer and the deduplication engine
+   (§18) respectively — not placeholders.
+5. **The Budget/Affordability engine's premium-to-coverage ratio is
+   explicitly NOT real pricing.** PRD §3.2 lists a Pricing engine as
+   Phase 2, and §50/§58 explicitly forbid letting price silently redefine
+   need. This ratio exists only so §20's mechanic (need vs
+   budget-constrained option vs remaining gap, need never shrunk) is
+   demonstrable; calibrated specifically to reproduce the PRD's own §20
+   worked example number-for-number (budget 300/mo → 1,200,000 coverage)
+   as a golden test. Logged in docs/REGULATORY-TODO.md as something that
+   must be replaced by real Product Matching pricing before production.
+6. **Scoped to lump-sum categories only for this milestone** — the budget
+   layer isn't run against disability/LTC's monthly-benefit shapes, and
+   isn't wired into the `apps/web` preview at all yet (there's no
+   questionnaire to actually collect a household's stated budget from).
+   Implemented and tested, not yet user-facing.
+7. **LTC's priority scoring uses a simplified has-gap/no-gap signal**
+   instead of a proportional gapRatio, because `capitalNeed` (LTC's
+   result) is already net of benefits/self-funding — there's no separate
+   raw need/existing pair to compare the way the other three
+   money-calculators expose. Noted directly in the preview page's code
+   comment, not hidden.
+
 ## 2026-09-07 — Coverage deduplication engine (PRD §18)
 
 1. **Same-category "sameRisk" match is overridden to `false` when exactly

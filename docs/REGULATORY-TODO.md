@@ -31,6 +31,16 @@ when the UI/disclaimer/licensed-flow work starts, PRD §4).
 - [ ] Commission/conflict disclosures.
 - [ ] Permissible integrations and customer authorizations.
 
+## Pricing placeholder must not reach a real user (added 2026-09-08)
+
+`packages/config`'s `affordability.assumedAnnualPremiumRatePer1000Coverage`
+is an invented number, not real insurer pricing — see docs/ASSUMPTIONS.md.
+It exists only to make the PRD §20 budget-affordability *mechanic*
+demonstrable/testable. Before any budget-affordability output is shown to
+a real user: replace it with actual Product Matching/insurer pricing
+(PRD §3.2 Phase 2, §50), or clearly and prominently disclose that the
+figure is illustrative, not a quote — never present it as a real premium.
+
 ## Feature flags not yet implemented (PRD §4.1)
 
 `needsAnalysis`, `personalizedRecommendation`, `productComparison`,

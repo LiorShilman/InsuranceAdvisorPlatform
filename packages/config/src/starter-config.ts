@@ -29,17 +29,48 @@ export const STARTER_ENGINE_CONFIG: EngineConfig = {
     incomeChangeReviewPct: 20,
   },
 
+  // Scaled so the six positive terms sum to 100 when every factor is at
+  // its max (1.0) — see docs/ASSUMPTIONS.md.
   priorityWeights: {
-    severityWeight: 1,
-    probabilityWeight: 1,
-    dependencyWeight: 1,
-    gapWeight: 1,
-    irreplaceabilityWeight: 1,
-    urgencyWeight: 1,
-    existingCoverageWeight: 1,
-    affordabilityPenalty: 1,
-    duplicatePenalty: 1,
+    severityWeight: 20,
+    probabilityWeight: 15,
+    dependencyWeight: 15,
+    gapWeight: 25,
+    irreplaceabilityWeight: 15,
+    urgencyWeight: 10,
+    existingCoverageWeight: 30,
   },
+
+  // Invented placeholders, not yet differentiated by real actuarial data
+  // (severity and exposure are currently the same number per category) —
+  // see docs/ASSUMPTIONS.md.
+  categoryRiskProfile: {
+    life: { severity: 0.9, exposure: 0.3, irrecoverability: 0.95, urgency: 0.6 },
+    disability: { severity: 0.85, exposure: 0.4, irrecoverability: 0.8, urgency: 0.6 },
+    critical_illness: { severity: 0.8, exposure: 0.35, irrecoverability: 0.6, urgency: 0.5 },
+    health: { severity: 0.5, exposure: 0.6, irrecoverability: 0.3, urgency: 0.4 },
+    ltc: { severity: 0.7, exposure: 0.25, irrecoverability: 0.85, urgency: 0.3 },
+    personal_accident: { severity: 0.5, exposure: 0.3, irrecoverability: 0.4, urgency: 0.4 },
+  },
+
+  // PRD §19.2 band names/cutoffs — "configurable", ordered highest-first.
+  priorityBands: [
+    { band: "CRITICAL", min: 80 },
+    { band: "HIGH", min: 60 },
+    { band: "MEDIUM", min: 40 },
+    { band: "LOW", min: 20 },
+    { band: "INFORMATIONAL", min: 0 },
+  ],
+
+  // NOT real pricing — see the field's own doc comment in engine-config.ts
+  // and docs/ASSUMPTIONS.md. Calibrated only so it reproduces the PRD's
+  // own §20 worked example exactly (budget 300/mo -> 1,200,000 coverage).
+  affordability: {
+    assumedAnnualPremiumRatePer1000Coverage: 3,
+    maxAffordabilityPenaltyPoints: 20,
+  },
+
+  duplicatePenaltyPoints: 15,
 
   careAssumptions: {
     // Invented placeholder, not a real cost-of-care survey figure — see docs/ASSUMPTIONS.md.
