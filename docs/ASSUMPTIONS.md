@@ -82,6 +82,15 @@ something concrete to start tuning.
   Both are defensible; this one keeps every intermediate value
   independently audit-exact, matching §25's "audit stores exact" intent.
 
+## Long-Term Care calculator
+
+- `careAssumptions.assumedMonthlyLTCCareCost = 18,000 ILS` — invented, not
+  sourced from any real cost-of-care survey. Used whenever a household's
+  own expected care cost is unknown (see docs/DECISIONS.md for why this
+  one field defaults to a config assumption instead of zero).
+- `LTC_DURATION_SCENARIOS_YEARS = [1, 2, 3, 5, 8]` — an arbitrary spread,
+  not derived from actuarial LTC duration statistics.
+
 ## Known dependency vulnerabilities (not remediated)
 
 `npm audit` reports 7 advisories (moderate→critical) as of this milestone:

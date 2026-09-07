@@ -7,10 +7,12 @@ import {
   DisabilityInsuranceCalculator,
   CriticalIllnessCalculator,
   HealthModuleAssessor,
+  LongTermCareCalculator,
   fromHouseholdFixture,
   fromHouseholdFixtureForDisability,
   fromHouseholdFixtureForCriticalIllness,
   fromHouseholdFixtureForHealth,
+  fromHouseholdFixtureForLongTermCare,
 } from "@insurance-advisor/calculators";
 
 const HEALTH_MODULE_LABELS: Record<HealthCoverageModule, string> = {
@@ -41,6 +43,8 @@ const REASON_CODE_LABELS: Record<string, string> = {
   CI_EXISTING_COVERAGE_PRESENT: "קיים כיסוי מחלות קשות",
   HEALTH_MODULE_UNKNOWN: "לא ידוע אם קיים כיסוי",
   HEALTH_DUPLICATE_POSSIBLE: "חשש לכפילות כיסוי",
+  LTC_MONTHLY_GAP: "פער חודשי בעלות הטיפול הסיעודי",
+  LTC_SELF_FUNDING_CAPACITY_HIGH: "יכולת מימון עצמי גבוהה",
 };
 
 const CONFIDENCE_LABELS: Record<string, string> = {
@@ -169,7 +173,9 @@ const lifeCalculator = new LifeInsuranceCalculator();
 const disabilityCalculator = new DisabilityInsuranceCalculator();
 const criticalIllnessCalculator = new CriticalIllnessCalculator();
 const healthModuleAssessor = new HealthModuleAssessor();
+const longTermCareCalculator = new LongTermCareCalculator();
 const CI_HEADLINE_DURATION_MONTHS = 6;
+const LTC_HEADLINE_DURATION_YEARS = 3;
 // Fixed "now" so the preview is deterministic across runs/reviewers, matching the fixtures' own reference date.
 const NOW = new Date("2026-09-07T00:00:00.000Z");
 
@@ -178,8 +184,8 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3-4 (PRD §12-15, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה, מחלות קשות ואת מנוע הערכת
-        מודולי הבריאות על 5 פרופילי בדיקה ישירות מהקוד — ללא שאלון, ללא API, ללא אחסון.
+        Milestone 3-4 (PRD §12-16, §48) · מריץ את מחשבוני ביטוח חיים, אבדן כושר עבודה, מחלות קשות, סיעוד ואת מנוע
+        הערכת מודולי הבריאות על 5 פרופילי בדיקה ישירות מהקוד — ללא שאלון, ללא API, ללא אחסון.
       </p>
 
       <div className="banner">
@@ -204,6 +210,13 @@ export default function PreviewPage() {
 
         const healthInput = fromHouseholdFixtureForHealth(fixture);
         const health = healthModuleAssessor.assess(healthInput, STARTER_ENGINE_CONFIG);
+
+        const ltcInput = fromHouseholdFixtureForLongTermCare(fixture);
+        const ltcScenarios = longTermCareCalculator.calculateScenarios(ltcInput, STARTER_ENGINE_CONFIG);
+        const ltcHeadline = ltcScenarios.find((s) => s.expectedDurationYears === LTC_HEADLINE_DURATION_YEARS) ?? ltcScenarios[0];
+        if (!ltcHeadline) {
+          return null; // unreachable — LTC_DURATION_SCENARIOS_YEARS is never empty
+        }
 
         return (
           <div key={fixture.name}>
@@ -275,6 +288,34 @@ export default function PreviewPage() {
             />
 
             <HealthModuleCard assessments={health} />
+
+            <ResultCard
+              title="ביטוח סיעודי"
+              badges={[`תרחיש מוצג: תוחלת ${ltcHeadline.expectedDurationYears} שנים`]}
+              confidence={ltcHeadline.result.confidence}
+              reasonCodes={ltcHeadline.result.reasonCodes}
+              figures={[
+                { label: "פער חודשי בעלות טיפול", amountExact: ltcHeadline.result.monthlyGap.toExactString() },
+                { label: "הון נדרש (מהוון)", amountExact: ltcHeadline.result.capitalNeed.toExactString(), emphasize: true },
+              ]}
+              missingFacts={ltcHeadline.result.missingFacts}
+              trace={ltcHeadline.trace}
+              extraContent={
+                <details>
+                  <summary>השוואת תרחישי תוחלת טיפול (PRD §16)</summary>
+                  <table className="trace">
+                    <tbody>
+                      {ltcScenarios.map((s) => (
+                        <tr key={s.expectedDurationYears}>
+                          <td>{s.expectedDurationYears} שנים</td>
+                          <td className="amount">{formatExact(s.result.capitalNeed.toExactString())}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              }
+            />
           </div>
         );
       })}

@@ -31,6 +31,17 @@ export type EngineConfig = {
   priorityWeights: Record<string, number>;
 
   /**
+   * PRD §16 explicitly frames "expected monthly care cost" as a
+   * system-level assumption, not something derived per household — unlike
+   * the other calculators' unknown-personal-data fields (which fall back
+   * to 0), a missing personal figure here falls back to this configured
+   * estimate instead. Still an unreviewed placeholder — see docs/ASSUMPTIONS.md.
+   */
+  careAssumptions: {
+    assumedMonthlyLTCCareCost: Money;
+  };
+
+  /**
    * PRD §15 gives module names but no need-scoring formula. This is the
    * fallback "need" level used when a module is known to be absent
    * (`existing: false`) — config-driven rather than hard-coded in the

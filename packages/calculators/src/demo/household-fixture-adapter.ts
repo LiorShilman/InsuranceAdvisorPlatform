@@ -5,6 +5,7 @@ import type { DisabilityCalculatorInput } from "../disability-insurance-calculat
 import type { CriticalIllnessCalculatorInput } from "../critical-illness-calculator.js";
 import { ALL_HEALTH_COVERAGE_MODULES } from "@insurance-advisor/domain";
 import type { HealthAssessorInput } from "../health-module-assessor.js";
+import type { LongTermCareCalculatorInput } from "../long-term-care-calculator.js";
 
 /**
  * DEMO/TEST ADAPTERS ONLY — not the real pipeline.
@@ -163,4 +164,30 @@ export function fromHouseholdFixtureForHealth(fixture: HouseholdFixture): Health
     return { modules: [] };
   }
   return { modules: ALL_HEALTH_COVERAGE_MODULES.map((module) => ({ module, existing: false as const })) };
+}
+
+/**
+ * DEMO ADAPTER ONLY. `expectedMonthlyCareCost` and
+ * `monthlySelfFundingCapacity` are left `undefined` on purpose — the
+ * fixtures don't model either, and unlike the other adapters this one
+ * doesn't invent a proxy for them (no clean way to turn an asset balance
+ * into a monthly drawdown rate without a real formula). This means every
+ * fixture will show the calculator falling back to
+ * `config.careAssumptions.assumedMonthlyLTCCareCost`, which is the
+ * intended, visible behavior, not a gap to fill in later.
+ * `reliableMonthlyLTCBenefits` sums any real `category: "ltc"` coverage
+ * rows (only Persona D has one).
+ */
+export function fromHouseholdFixtureForLongTermCare(
+  fixture: HouseholdFixture,
+  overrides: Partial<LongTermCareCalculatorInput> = {},
+): Omit<LongTermCareCalculatorInput, "expectedDurationYears"> {
+  const reliableMonthlyLTCBenefits = fixture.coverages
+    .filter((c) => c.category === "ltc")
+    .reduce((sum, c) => sum.add(c.monthlyBenefit ?? Money.zero()), Money.zero());
+
+  return {
+    reliableMonthlyLTCBenefits,
+    ...overrides,
+  };
 }

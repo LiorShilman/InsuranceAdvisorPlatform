@@ -2,6 +2,28 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-07 — Long-Term Care calculator (PRD §16)
+
+1. **`expectedMonthlyCareCost` falls back to a new `config.careAssumptions.
+   assumedMonthlyLTCCareCost` when the household-specific figure is
+   unknown — not to zero**, unlike every other unknown-money field in this
+   codebase. PRD §16 itself frames "expected monthly care cost" as a
+   system-level assumption to configure, not a personal fact that's simply
+   missing; falling back to 0 here would badly understate LTC need for
+   every household without personalized data, which defeats the point of
+   having the assumption. Still flagged in `missingFacts`/`assumptions`,
+   never silent. `monthlySelfFundingCapacity` keeps the normal
+   fall-back-to-zero behavior — no equivalent "it's really a config
+   assumption" framing for that one in the PRD.
+2. **`calculateScenarios()` mirrors the critical illness calculator's
+   pattern** for expected-duration scenario ranges (§16 explicitly calls
+   duration "a scenario parameter with a range", same framing as §14 for
+   critical illness recovery duration) — reused the same shape rather than
+   inventing a different one.
+3. **`packages/config` now depends on `packages/domain`** (added when
+   `healthModuleDefaultNeedWhenMissing` was introduced) — `careAssumptions`
+   piggybacks on that same dependency edge, no new one needed.
+
 ## 2026-09-07 — Health module assessment (PRD §15)
 
 1. **`HealthCoverageModule` and `HealthModuleAssessment` live in

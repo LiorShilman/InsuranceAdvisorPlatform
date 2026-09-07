@@ -41,6 +41,11 @@ export const STARTER_ENGINE_CONFIG: EngineConfig = {
     duplicatePenalty: 1,
   },
 
+  careAssumptions: {
+    // Invented placeholder, not a real cost-of-care survey figure — see docs/ASSUMPTIONS.md.
+    assumedMonthlyLTCCareCost: Money.fromNumber(18_000),
+  },
+
   // Invented placeholders, not a product/actuarial recommendation — see docs/ASSUMPTIONS.md.
   healthModuleDefaultNeedWhenMissing: {
     surgeries_israel: "high",
