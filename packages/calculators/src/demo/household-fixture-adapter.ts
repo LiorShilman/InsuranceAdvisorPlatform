@@ -1,31 +1,35 @@
 import { Money } from "@insurance-advisor/shared";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import type { LifeCalculatorInput } from "../life-insurance-calculator.js";
+import type { DisabilityCalculatorInput } from "../disability-insurance-calculator.js";
 
 /**
- * DEMO/TEST ADAPTER ONLY — not the real pipeline.
+ * DEMO/TEST ADAPTERS ONLY — not the real pipeline.
  *
  * Maps a `HouseholdFixture` (a hand-authored domain-shaped test fixture)
- * straight onto `LifeCalculatorInput`, skipping the Facts Engine and
- * Questionnaire entirely. This exists so the calculator can be exercised
- * by tests (§48) and the `apps/web` preview page without waiting on
- * Milestone 2. The real pipeline (§10) is Questionnaire → Facts → Rules →
- * Calculators — see docs/DECISIONS.md.
+ * straight onto a calculator's input type, skipping the Facts Engine and
+ * Questionnaire entirely. This exists so calculators can be exercised by
+ * tests and the `apps/web` preview page without waiting on Milestone 2.
+ * The real pipeline (§10) is Questionnaire → Facts → Rules → Calculators —
+ * see docs/DECISIONS.md.
  */
+
+function ageOnDate(dateOfBirth: string | undefined, now: Date): number | undefined {
+  if (!dateOfBirth) return undefined;
+  const dob = new Date(dateOfBirth);
+  let age = now.getUTCFullYear() - dob.getUTCFullYear();
+  const hadBirthdayThisYear =
+    now.getUTCMonth() > dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() >= dob.getUTCDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
 export function fromHouseholdFixture(
   fixture: HouseholdFixture,
   overrides: Partial<LifeCalculatorInput> = {},
   now: Date = new Date(),
 ): LifeCalculatorInput {
-  const ageOn = (dateOfBirth: string | undefined): number | undefined => {
-    if (!dateOfBirth) return undefined;
-    const dob = new Date(dateOfBirth);
-    let age = now.getUTCFullYear() - dob.getUTCFullYear();
-    const hadBirthdayThisYear =
-      now.getUTCMonth() > dob.getUTCMonth() || (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() >= dob.getUTCDate());
-    if (!hadBirthdayThisYear) age -= 1;
-    return age;
-  };
+  const ageOn = (dateOfBirth: string | undefined) => ageOnDate(dateOfBirth, now);
 
   const youngestDependentAge = fixture.household.dependents
     .map((d) => ageOn(d.dateOfBirth))
@@ -73,6 +77,42 @@ export function fromHouseholdFixture(
           lenderBeneficiaryCoverageAmount: mortgage.lenderBeneficiaryCoverageAmount,
         }
       : undefined,
+    ...overrides,
+  };
+}
+
+/**
+ * DEMO ADAPTER ONLY. None of the 5 fixtures carry a monthly disability
+ * benefit amount (only `Employment.hasPensionDisabilityCoverage` /
+ * `hasEmployerCoverage` booleans, no amounts) — so
+ * `existingNetExpectedDisabilityIncome` always comes out `undefined` here,
+ * on purpose. That's a realistic "we haven't collected this yet" case, not
+ * a bug — see docs/ASSUMPTIONS.md. `essentialMonthlyExpenses` folds in
+ * every essential expense category (including `debt_service` and
+ * `childcare`) to avoid double-counting against `debtMonthlyPayments`/
+ * `dependentsMonthlyNeeds`, which are left at an explicit zero rather than
+ * re-summed.
+ */
+export function fromHouseholdFixtureForDisability(
+  fixture: HouseholdFixture,
+  overrides: Partial<DisabilityCalculatorInput> = {},
+  now: Date = new Date(),
+): DisabilityCalculatorInput {
+  const essentialMonthlyExpenses = fixture.expenses
+    .filter((e) => e.essential)
+    .reduce((sum, e) => sum.add(e.monthlyAmount), Money.zero());
+
+  const reliableMonthlyIncomeDuringDisability = fixture.incomeSources
+    .filter((i) => i.reliableIfDisabled)
+    .reduce((sum, i) => sum.add(i.netMonthlyAmount), Money.zero());
+
+  return {
+    essentialMonthlyExpenses,
+    debtMonthlyPayments: Money.zero(),
+    dependentsMonthlyNeeds: Money.zero(),
+    reliableMonthlyIncomeDuringDisability,
+    currentAge: ageOnDate(fixture.primaryPerson.dateOfBirth, now),
+    retirementAge: fixture.primaryPerson.retirementAge,
     ...overrides,
   };
 }

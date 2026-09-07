@@ -2,6 +2,29 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-07 — Disability/Income Protection calculator (PRD §13)
+
+1. **`existingNetExpectedDisabilityIncome` is a single aggregate figure**,
+   not a structured breakdown of pension disability + private income
+   protection + employer coverage + waiting period + offsets (all listed
+   individually in §13.2). Modeling each source separately (with its own
+   waiting period and offset rules) is realistically Product-Matching-
+   adjacent work; folding them into one net monthly number keeps the
+   calculator itself simple and still produces a real, auditable gap.
+2. **The demo fixture adapter (`fromHouseholdFixtureForDisability`) always
+   produces `existingNetExpectedDisabilityIncome: undefined`** because none
+   of the 5 fixtures carry a monthly disability benefit amount (only
+   boolean `hasPensionDisabilityCoverage`/`hasEmployerCoverage` flags on
+   `Employment`). This is deliberate — it demonstrates the "unknown stays
+   unknown, confidence drops, nothing is silently zeroed" behavior for
+   real, not a bug to fix.
+3. To avoid double-counting against `debtMonthlyPayments` and
+   `dependentsMonthlyNeeds` (which the fixtures don't track as separate
+   monthly figures), the demo adapter folds every essential-flagged expense
+   — including `debt_service` and `childcare` categories — into a single
+   `essentialMonthlyExpenses` figure and leaves the other two fields at an
+   explicit zero, not re-derived from the same expense rows.
+
 ## 2026-09-07 — Life Insurance calculator slice (PRD §12, §48) + preview UI
 
 1. **`LifeCalculatorInput` is a typed, pre-normalized shape, not raw `Fact[]`.**
