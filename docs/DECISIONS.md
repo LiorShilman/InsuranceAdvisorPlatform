@@ -2,6 +2,41 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Report renderer (Milestone 7, PRD §39) + computation extraction
+
+1. **`lib/compute-recommendations.ts` factors out the ~150-line
+   calculator/priority/recommendation-builder wiring** that was inline in
+   `/questionnaire`'s `LiveRecommendations` — now shared by that page and
+   the new `/report` page instead of existing in only one place (a third
+   copy would have been the same wiring duplicated three times). Concrete
+   side benefit: `/questionnaire`'s client bundle dropped from 26.8kB to
+   3.5kB, since the calculator classes are now instantiated once at
+   module scope in a file both pages import, not re-bundled per page.
+2. **`/report` reads facts straight from the API**, independent of the
+   in-memory `answers` state the questionnaire keeps — meaning a report
+   can be generated even after closing the browser and coming back later,
+   genuinely exercising the persistence layer added earlier this session,
+   not just the questionnaire's own live view of its own state.
+3. **Two of the PRD's 16 sections say so explicitly instead of being
+   silently omitted**: §10 (budget-constrained alternative) and §11
+   (possible overlaps) both note plainly that the underlying engine exists
+   and is tested (`BudgetAffordabilityEngine`, `CoverageDeduplicationEngine`)
+   but isn't wired to the live questionnaire's data shape yet — same
+   "unknown stays unknown, never silently" discipline applied to a report
+   section instead of a calculator field.
+4. **"Export" is `window.print()` with `@media print` CSS**, not a PDF
+   library dependency (e.g. Puppeteer/pdf-lib) — a `<details>` element's
+   content is only visible when `[open]`, which CSS alone can't force for
+   print, so the print button explicitly sets `open` on every `<details>`
+   right before calling `window.print()`.
+5. **Fixed: `GET /api/facts` returned `confidence` as a string** (Prisma's
+   `Decimal` serializes to a string over JSON), silently violating the
+   shared `Fact` type's `confidence: number`. Nothing consumed
+   `fact.confidence` yet so this had caused no visible bug, but it was a
+   real type-vs-runtime mismatch waiting to bite the next thing that reads
+   it. Fixed by converting in the route handler rather than documenting
+   it as a known gap.
+
 ## 2026-09-08 — Real persistence: Postgres migration run + API layer (Milestone 6 start)
 
 1. **Docker Desktop became reachable this session** — ran the actual

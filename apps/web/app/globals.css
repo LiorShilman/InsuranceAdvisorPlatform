@@ -214,3 +214,17 @@ table.trace td.amount {
 .form-input::placeholder {
   color: var(--muted);
 }
+
+/* "Export" for /report is browser print-to-PDF, not a PDF library dependency. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .card {
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+}

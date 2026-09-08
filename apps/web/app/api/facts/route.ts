@@ -6,7 +6,11 @@ export async function GET(request: Request) {
   if (!clientProfileId) {
     return NextResponse.json({ error: "clientProfileId is required" }, { status: 400 });
   }
-  const facts = await prisma.fact.findMany({ where: { clientProfileId } });
+  const rows = await prisma.fact.findMany({ where: { clientProfileId } });
+  // Prisma's Decimal serializes to a string over JSON — convert back to a
+  // number here so the response actually matches the shared `Fact` type's
+  // `confidence: number`, instead of silently handing callers a string.
+  const facts = rows.map((f) => ({ ...f, confidence: Number(f.confidence) }));
   return NextResponse.json({ facts });
 }
 
