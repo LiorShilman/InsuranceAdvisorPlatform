@@ -10,6 +10,11 @@
   --brand: #0f6e5f;
   --brand-dark: #0b5147;
   --brand-bg: #e6f3f0;
+  /* Text/icon color placed directly on a var(--brand) background (buttons,
+     avatars) — white on the light-mode brand passes AA (~6:1), but white on
+     the brighter dark-mode brand teal would fail (~2.5:1), so this flips to
+     a near-black in the dark-mode blocks below rather than staying #fff. */
+  --brand-contrast: #ffffff;
 
   --info: #1d4ed8;
   --info-bg: #e8effe;
@@ -44,6 +49,9 @@
     --brand: #35b795;
     --brand-dark: #6fd4b8;
     --brand-bg: #123832;
+    /* White on this brighter dark-mode teal fails contrast (~2.5:1) — a
+       near-black reads correctly instead (~8:1). */
+    --brand-contrast: #06201a;
 
     --info: #7aa4f7;
     --info-bg: #16233f;
@@ -73,6 +81,7 @@
   --brand: #35b795;
   --brand-dark: #6fd4b8;
   --brand-bg: #123832;
+  --brand-contrast: #06201a;
 
   --info: #7aa4f7;
   --info-bg: #16233f;
@@ -193,12 +202,12 @@ h2 {
 
 .banner {
   background: var(--warning-bg);
-  border: 1px solid #f0d58a;
+  border: 1px solid var(--warning);
   border-radius: var(--radius-md);
   padding: 14px 18px;
   margin: 18px 0 28px;
   font-size: 0.92rem;
-  color: #6b4a08;
+  color: var(--warning);
 }
 
 /* ---------- Cards ---------- */
@@ -289,7 +298,7 @@ h2 {
   height: 40px;
   border-radius: 50%;
   background: var(--brand);
-  color: #fff;
+  color: var(--brand-contrast);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -406,7 +415,7 @@ h2 {
 .badge.next-review {
   background: var(--info-bg);
   color: var(--info);
-  border: 1px solid #b6c9f7;
+  border: 1px solid var(--info);
 }
 
 /* ---------- Real buttons (clickable actions — distinct from badges) ---------- */
@@ -436,7 +445,7 @@ h2 {
 .btn-primary {
   background: var(--brand);
   border-color: var(--brand);
-  color: #fff;
+  color: var(--brand-contrast);
 }
 
 .btn-primary:hover {

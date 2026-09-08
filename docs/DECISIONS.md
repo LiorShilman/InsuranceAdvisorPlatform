@@ -2,6 +2,33 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Dark-mode CSS audit: 2 hardcoded colors, 1 real contrast failure
+
+Small follow-up to the visual redesign pass, per the user's own request
+to keep improving polish without a big new architectural decision. Audited
+`globals.css` for every hex color living outside the `:root`/`data-theme`
+token blocks (the `@media print` rules are correctly exempt — printed
+output should always look like paper, regardless of screen theme):
+
+1. **`.banner`** (the educational-mode disclaimer shown on every page) had
+   a hardcoded light-mode-only border (`#f0d58a`) and text color
+   (`#6b4a08`) — in dark mode this rendered a light amber border/text on
+   top of the dark-mode warning background, illegible. Switched both to
+   `var(--warning)`, which is already themed correctly in both modes.
+2. **`.badge.next-review`** had a hardcoded light-blue border (`#b6c9f7`)
+   — same issue, switched to `var(--info)`.
+3. **Real accessibility bug, not just a token-discipline nitpick**: white
+   text (`#fff`) on `var(--brand)` backgrounds (`.btn-primary`,
+   `.persona-avatar`) — contrast ratio ~6:1 in light mode (fine), but only
+   ~2.5:1 in dark mode against the brighter dark-mode brand teal, well
+   below the ~3:1 WCAG AA floor for UI components/large text. Added a new
+   `--brand-contrast` token (`#ffffff` light, `#06201a` dark, ~8:1) and
+   pointed both rules at it instead of a literal white.
+4. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (140/140), a clean
+   `next build`, and confirmed live against the restarted dev server that
+   all three `--brand-contrast` variants (light + the two dark-mode
+   blocks) actually compiled into the served CSS.
+
 ## 2026-09-08 — Fixed a real gap: disability's `dependentsMonthlyNeeds` was never asked or honestly logged as unknown
 
 `DisabilityCalculatorInput.dependentsMonthlyNeeds` (PRD §13.1:
