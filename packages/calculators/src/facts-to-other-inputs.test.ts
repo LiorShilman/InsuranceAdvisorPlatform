@@ -26,12 +26,30 @@ describe("factsToDisabilityCalculatorInput", () => {
     expect(input.existingNetExpectedDisabilityIncome?.toExactString()).toBe("3000.00");
     expect(input.currentAge).toBe(38);
     expect(input.retirementAge).toBe(67);
+    // dependentCount was never answered — genuinely unknown, not assumed zero.
+    expect(input.dependentsMonthlyNeeds).toBeUndefined();
   });
 
   it("leaves everything undefined given no facts", () => {
     const input = factsToDisabilityCalculatorInput([]);
     expect(input.essentialMonthlyExpenses).toBeUndefined();
     expect(input.currentAge).toBeUndefined();
+    expect(input.dependentsMonthlyNeeds).toBeUndefined();
+  });
+
+  it("dependentCount=0 makes dependentsMonthlyNeeds a real, explicit zero (not a gap)", () => {
+    const input = factsToDisabilityCalculatorInput([fact("household.dependents.count", 0)]);
+    expect(input.dependentsMonthlyNeeds?.isZero()).toBe(true);
+  });
+
+  it("dependents exist and the amount was answered -> uses the real figure", () => {
+    const input = factsToDisabilityCalculatorInput([fact("household.dependents.count", 2), fact("expenses.dependents.monthly", 3_500)]);
+    expect(input.dependentsMonthlyNeeds?.toExactString()).toBe("3500.00");
+  });
+
+  it("dependents exist but the amount was never answered -> stays undefined (a real unknown)", () => {
+    const input = factsToDisabilityCalculatorInput([fact("household.dependents.count", 2)]);
+    expect(input.dependentsMonthlyNeeds).toBeUndefined();
   });
 });
 

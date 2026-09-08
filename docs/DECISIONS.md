@@ -2,6 +2,56 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Fixed a real gap: disability's `dependentsMonthlyNeeds` was never asked or honestly logged as unknown
+
+`DisabilityCalculatorInput.dependentsMonthlyNeeds` (PRD §13.1:
+`RequiredMonthlyIncome = EssentialMonthlyExpenses + DebtMonthlyPayments +
+DependentsMonthlyNeeds - ReliableIncomeDuringDisability`) has been in the
+calculator's type and formula since Milestone 3, fully tested — but no
+question in `STARTER_QUESTIONS` ever asked for it, and the calculator
+read it via `input.dependentsMonthlyNeeds ?? zero` (a *silent* default,
+unlike every other optional field in this calculator, which goes through
+`resolveMoney` and logs a `missingFacts` + `Assumption` entry). Net
+effect: a household with dependents always got `dependentsMonthlyNeeds`
+treated as a confirmed zero, with no signal anywhere that it was actually
+unknown — a real violation of the "unknown stays unknown" discipline
+documented everywhere else in this codebase, not just an unused field.
+
+1. **Calculator now uses `resolveMoney` for this field too** — logs
+   `missingFacts`/`Assumption` when truly absent, same as
+   `essentialMonthlyExpenses`/`existingNetExpectedDisabilityIncome`.
+2. **New question `household_dependents_monthly_needs`**
+   (`expenses.dependents.monthly`), `showWhen`/`requiredWhen` gated on
+   `household_dependents_count > 0` — same pattern as
+   `household_youngest_dependent_age`.
+3. **The explicit-zero-vs-undefined distinction lives in the adapter**
+   (`facts-to-disability-input.ts`), not the calculator: `dependentCount
+   === 0` → a real, confirmed `Money.zero()` (not a gap); dependents
+   exist but the amount fact is absent → stays `undefined`, a genuine
+   unknown. `packages/calculators/src/demo/household-fixture-adapter.ts`
+   (the fixture-driven `/` page) is unaffected — it already always
+   passes an explicit `Money.zero()` here for a separately-documented
+   reason (avoiding double-counting against `essentialMonthlyExpenses`).
+4. Had to update one existing test (`disability-insurance-calculator.test.ts`
+   #8) whose "high confidence" assertion implicitly relied on the old
+   silent-zero behavior for a field the test wasn't actually about —
+   added an explicit `dependentsMonthlyNeeds: Money.zero()` to keep its
+   actual focus (existing-coverage zero-vs-missing) intact. Added 4 new
+   tests (calculator + adapter) covering the new behavior; verified via a
+   temporary scratch test (deleted after) that the question is reachable
+   in the live selector once dependents exist, and never asked when they
+   don't. 140/140 tests pass (up from 136), `tsc -b`, `npm run lint`, and
+   a clean `next build` all pass.
+5. Verified end-to-end against the running dev server: posted
+   `household.dependents.count`/`expenses.dependents.monthly` facts to
+   the demo profile via the live API, confirmed they persisted correctly,
+   then cleared the demo profile's facts afterward (same effect as the
+   questionnaire's own "start over" button) — **note for whoever reads
+   this next**: if real answers had been entered in the browser against
+   this demo profile before this verification ran, they were wiped by
+   that cleanup; the demo profile has no history/undo (§34 real
+   audit/auth doesn't exist yet).
+
 ## 2026-09-08 — Coverage-deduplication engine wired into the live flow (closes report §11)
 
 `CoverageDeduplicationEngine` (PRD §18) has existed and been tested since

@@ -82,11 +82,13 @@ describe("DisabilityInsuranceCalculator (PRD §13)", () => {
     const input: DisabilityCalculatorInput = {
       essentialMonthlyExpenses: Money.fromNumber(10_000),
       existingNetExpectedDisabilityIncome: Money.zero(),
+      dependentsMonthlyNeeds: Money.zero(),
       currentAge: 40,
       retirementAge: 67,
     };
     const { result } = calculator.calculate(input, STARTER_ENGINE_CONFIG);
     expect(result.missingFacts).not.toContain("existingNetExpectedDisabilityIncome");
+    expect(result.missingFacts).not.toContain("dependentsMonthlyNeeds");
     expect(result.confidence).toBe("high");
   });
 
@@ -96,6 +98,18 @@ describe("DisabilityInsuranceCalculator (PRD §13)", () => {
     expect(result.missingFacts).toContain("essentialMonthlyExpenses");
     expect(result.confidence).toBe("low");
     expect(result.assumptions.some((a) => a.key === "essentialMonthlyExpenses")).toBe(true);
+  });
+
+  it("9b. missing dependents' monthly needs is flagged, not silently zeroed (unlike debt)", () => {
+    const input: DisabilityCalculatorInput = {
+      essentialMonthlyExpenses: Money.fromNumber(10_000),
+      existingNetExpectedDisabilityIncome: Money.zero(),
+    };
+    const { result } = calculator.calculate(input, STARTER_ENGINE_CONFIG);
+    expect(result.missingFacts).toContain("dependentsMonthlyNeeds");
+    expect(result.assumptions.some((a) => a.key === "dependentsMonthlyNeeds")).toBe(true);
+    // debtMonthlyPayments, by contrast, is a real known-zero-safe default — never flagged.
+    expect(result.missingFacts).not.toContain("debtMonthlyPayments");
   });
 
   it("10. recommended duration is years until retirement when both ages are known", () => {

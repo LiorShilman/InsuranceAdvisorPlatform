@@ -86,7 +86,20 @@ export class DisabilityInsuranceCalculator
       lines.push({ key: "debt_payments", label: "תשלומי חובות חודשיים", amountExact: debt.toExactString(), sourceFactKeys: ["debtMonthlyPayments"], assumptionKeys: [] });
     }
 
-    const dependentsNeeds = input.dependentsMonthlyNeeds ?? zero;
+    // Unlike debtMonthlyPayments (where "no debt" is a common, real zero
+    // state), an undefined dependentsMonthlyNeeds is genuinely unknown, not
+    // safely zero — a household with dependents almost certainly has some
+    // ongoing cost for them. Adapters that know the household has zero
+    // dependents pass an explicit Money.zero() (a real answer, not a gap);
+    // resolveMoney only fires — and only then logs a missingFacts entry —
+    // when the value is truly undefined.
+    const dependentsNeeds = resolveMoney(
+      input.dependentsMonthlyNeeds,
+      "dependentsMonthlyNeeds",
+      "Dependents' monthly needs unknown — assumed 0 pending data (understates the need if the household has dependents).",
+      missingFacts,
+      assumptions,
+    );
     if (!dependentsNeeds.isZero()) {
       lines.push({ key: "dependents_needs", label: "צרכי תלויים חודשיים", amountExact: dependentsNeeds.toExactString(), sourceFactKeys: ["dependentsMonthlyNeeds"], assumptionKeys: [] });
     }
