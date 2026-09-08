@@ -291,6 +291,18 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
         note={`טווח מוצע: ${formatExact(life.result.recommendedRange.min.toExactString())} – ${formatExact(life.result.recommendedRange.max.toExactString())}`}
         missingFacts={life.result.missingFacts}
         trace={life.trace}
+        extraContent={
+          life.affordability.budgetSupportedCoverage && (
+            <p className="missing" style={{ color: "var(--muted)" }}>
+              חלופה מוגבלת תקציב: כיסוי נתמך {formatExact(life.affordability.budgetSupportedCoverage.toExactString())} · פער שנותר{" "}
+              {formatExact(life.affordability.remainingUninsuredGap.toExactString())} (§20 — ראה{" "}
+              <Link href="/report" style={{ color: "var(--accent)" }}>
+                דוח מלא
+              </Link>
+              )
+            </p>
+          )
+        }
       />
 
       <ResultCard

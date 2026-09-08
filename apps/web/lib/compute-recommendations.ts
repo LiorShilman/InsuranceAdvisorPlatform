@@ -10,6 +10,7 @@ import {
   PriorityEngine,
   RecommendationBuilder,
   ReviewScheduler,
+  BudgetAffordabilityEngine,
   factsToLifeCalculatorInput,
   factsToDisabilityCalculatorInput,
   factsToCriticalIllnessInput,
@@ -21,6 +22,7 @@ import {
   type LongTermCareResult,
   type HealthAssessmentResult,
   type PriorityResult,
+  type AffordabilityResult,
 } from "@insurance-advisor/calculators";
 import type { CalculationTrace } from "@insurance-advisor/shared";
 
@@ -41,9 +43,10 @@ const healthModuleAssessor = new HealthModuleAssessor();
 const priorityEngine = new PriorityEngine();
 const recommendationBuilder = new RecommendationBuilder();
 const reviewScheduler = new ReviewScheduler();
+const budgetAffordabilityEngine = new BudgetAffordabilityEngine();
 
 export type ComputedRecommendations = {
-  life: { result: LifeInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
+  life: { result: LifeInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string; affordability: AffordabilityResult };
   disability: { result: DisabilityInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
   ci: { result: CriticalIllnessResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
   ltc: { result: LongTermCareResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
@@ -67,8 +70,19 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
 
   const health = healthModuleAssessor.assess(factsToHealthInput(facts), STARTER_ENGINE_CONFIG);
 
+  // Budget/Affordability (§20) — scoped to life's lump-sum gap only, per docs/DECISIONS.md.
+  // Never shrinks the calculated need itself; only adds a second, budget-constrained option.
+  const monthlyBudgetValue = facts.find((f) => f.key === "budget.monthlyProtectionBudget")?.value;
+  const monthlyBudget = typeof monthlyBudgetValue === "number" ? Money.fromNumber(monthlyBudgetValue) : undefined;
+  const lifeAffordability = budgetAffordabilityEngine.evaluate({ calculatedNeed: life.result.gap, monthlyBudget }, STARTER_ENGINE_CONFIG);
+
   const lifePriority = priorityEngine.score(
-    { category: "life", ...PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber()), hasDependents },
+    {
+      category: "life",
+      ...PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber()),
+      hasDependents,
+      affordabilityPenalty: lifeAffordability.affordabilityPenalty,
+    },
     STARTER_ENGINE_CONFIG,
   );
   const disabilityPriority = priorityEngine.score(
@@ -166,7 +180,7 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
   );
 
   return {
-    life: { result: life.result, trace: life.trace, priority: lifePriority, recommendation: lifeRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(lifeRecommendation, now) },
+    life: { result: life.result, trace: life.trace, priority: lifePriority, recommendation: lifeRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(lifeRecommendation, now), affordability: lifeAffordability },
     disability: { result: disability.result, trace: disability.trace, priority: disabilityPriority, recommendation: disabilityRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(disabilityRecommendation, now) },
     ci: { result: ci.result, trace: ci.trace, priority: ciPriority, recommendation: ciRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(ciRecommendation, now) },
     ltc: { result: ltc.result, trace: ltc.trace, priority: ltcPriority, recommendation: ltcRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(ltcRecommendation, now) },

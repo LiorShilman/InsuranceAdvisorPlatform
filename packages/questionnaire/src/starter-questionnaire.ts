@@ -251,6 +251,18 @@ export const STARTER_QUESTIONS: Question[] = [
     decisionImpact: 0.3,
   },
   {
+    id: "budget_monthly_protection",
+    version: 1,
+    category: "goals",
+    text: "כמה אתה מרגיש בנוח להקצות בחודש עבור ביטוחי הגנה (חיים/אבדן כושר עבודה וכו')?",
+    helpText: "זה לא מקטין את הצורך המחושב — זה רק מוסיף אפשרות נוספת מוגבלת-תקציב לצדו (PRD §20).",
+    answerType: "money",
+    required: false,
+    normalizer: "roundMoneyToShekel",
+    factsProduced: ["budget.monthlyProtectionBudget"],
+    decisionImpact: 0.4,
+  },
+  {
     id: "person_protection_horizon_override",
     version: 1,
     category: "personal",

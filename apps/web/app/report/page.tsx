@@ -294,12 +294,40 @@ export default function ReportPage() {
 
       {/* 10. Budget-constrained alternative */}
       <section className="card">
-        <h2>10. חלופה מוגבלת תקציב</h2>
-        <p style={{ color: "var(--muted)" }}>
-          לא נאסף עדיין תקציב חודשי בשאלון החי — שכבת ה-Budget/Affordability (§20) קיימת ונבדקה (
-          <code>BudgetAffordabilityEngine</code>), אך אינה מחוברת לזרימת השאלון. סעיף זה יתמלא כשתתווסף שאלה
-          מתאימה.
-        </p>
+        <h2>10. חלופה מוגבלת תקציב (ביטוח חיים)</h2>
+        {computed.life.affordability.budgetSupportedCoverage ? (
+          <>
+            <table className="trace">
+              <tbody>
+                <tr>
+                  <td>צורך מחושב (ללא הגבלת תקציב)</td>
+                  <td className="amount">{formatExact(computed.life.affordability.calculatedNeed.toExactString())}</td>
+                </tr>
+                <tr>
+                  <td>כיסוי נתמך תקציבית</td>
+                  <td className="amount">{formatExact(computed.life.affordability.budgetSupportedCoverage.toExactString())}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>פער שנותר לא מבוטח</strong>
+                  </td>
+                  <td className="amount">
+                    <strong>{formatExact(computed.life.affordability.remainingUninsuredGap.toExactString())}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+              הצורך המחושב עצמו אינו מוקטן על ידי התקציב (כלל מפורש ב-PRD §20) — זו רק אפשרות נוספת לצדו. יחס
+              ההמרה תקציב→כיסוי אינו תמחור ביטוחי אמיתי (ראו docs/ASSUMPTIONS.md).
+            </p>
+          </>
+        ) : (
+          <p style={{ color: "var(--muted)" }}>
+            לא צוין תקציב חודשי בשאלון — שכבת ה-Budget/Affordability (§20) קיימת ונבדקה (
+            <code>BudgetAffordabilityEngine</code>) ומוצגת כאן ברגע שתענה על השאלה המתאימה בשאלון.
+          </p>
+        )}
       </section>
 
       {/* 11. Possible overlaps */}

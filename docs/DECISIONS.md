@@ -2,6 +2,26 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Budget/Affordability wired into the live flow (closes report §10)
+
+1. **Added one question** (`budget_monthly_protection`) instead of a
+   dedicated adapter module — a single fact read inline in
+   `compute-recommendations.ts`, since only one field is involved and a
+   whole `facts-to-budget-input.ts` file would be ceremony for it.
+2. **Scoped to life insurance only**, matching `BudgetAffordabilityEngine`'s
+   own scoping (lump-sum categories only — see its original entry above).
+   Disability/CI/LTC don't get an affordability-adjusted priority yet.
+3. **`lifeAffordability.affordabilityPenalty` now actually feeds
+   `PriorityEngine`** for the life category — previously implemented and
+   tested in isolation but never actually consumed anywhere in the app.
+4. **Report §10 shows real numbers once a budget fact exists**, and
+   still explicitly states the engine exists-but-unused otherwise — the
+   same explicit-not-silent pattern used throughout, now demonstrated
+   with a real state transition instead of always showing the same
+   placeholder text.
+5. Verified end-to-end by posting the PRD's own §20 example value (a
+   300 ILS/month budget) to the live demo profile via the API.
+
 ## 2026-09-08 — Report renderer (Milestone 7, PRD §39) + computation extraction
 
 1. **`lib/compute-recommendations.ts` factors out the ~150-line
