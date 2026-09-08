@@ -2,6 +2,39 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Questionnaire clarity pass: real helpText + a raw-identifier-leak bug
+
+User feedback: "לדעתי יש להוסיף הסבר קצר בשאלון האישי ... לפעמים המשתמש לא
+ידע מה כוונת המשורר" (some questions need a short explanation — the user
+won't always know what's actually being asked).
+
+1. **Found and fixed a real, user-visible bug** while doing this pass, not
+   just a missing explanation: the 7 health-module questions
+   (`ALL_HEALTH_COVERAGE_MODULES.map(...)`) built their Hebrew question
+   text by directly interpolating the *English domain identifier* —
+   the live questionnaire was literally asking "האם יש לך כיסוי ביטוחי
+   פרטי עבור: surgeries_israel?" instead of a translated label. Fixed
+   with a `HEALTH_MODULE_QUESTION_TEXT` map (Hebrew label + helpText per
+   module) inside `starter-questionnaire.ts` — kept local to this
+   package rather than importing `apps/web`'s existing
+   `HEALTH_MODULE_LABELS` (a different string domain: labeling a result
+   row vs. phrasing a question — and the dependency would point the
+   wrong way, web→questionnaire, not questionnaire→web).
+2. **Added `helpText` to every question that was genuinely ambiguous**
+   without it — not indiscriminately to all of them (e.g. "מה הגיל
+   שלך?" doesn't need one). Judged case by case: `income_survivor_reliable_monthly`
+   (what exactly counts, what doesn't), `debt_mortgage_has_lender_insurance`
+   (jargon: "מוטב" + why it's distinct from the personal life-insurance
+   question), `assets_earmarked_liquid`/`assets_monthly_self_funding_capacity`
+   (both were previously the least explained questions in the whole
+   bank), `coverage_ltc_existing_monthly_benefit`/`coverage_critical_illness_existing_amount`
+   (what to enter if none), `goals_education_amount`,
+   `household_dependents_count`.
+3. Verified: `tsc -b`, `npm run lint`, `npm test` (140/140), clean `next
+   build`, and confirmed live against the restarted dev server that the
+   corrected Hebrew labels (not the raw identifiers) are what actually
+   compiled into the served questionnaire bundle.
+
 ## 2026-09-08 — Dark-mode CSS audit: 2 hardcoded colors, 1 real contrast failure
 
 Small follow-up to the visual redesign pass, per the user's own request

@@ -1,5 +1,46 @@
-import { ALL_HEALTH_COVERAGE_MODULES } from "@insurance-advisor/domain";
+import { ALL_HEALTH_COVERAGE_MODULES, type HealthCoverageModule } from "@insurance-advisor/domain";
 import type { Question } from "./question.js";
+
+/**
+ * `ALL_HEALTH_COVERAGE_MODULES` (packages/domain) is deliberately just
+ * English identifiers — domain types carry no UI strings. This is the
+ * Hebrew authoring layer, so the question text/help below is where those
+ * identifiers get translated. Bug fixed here: the question text used to
+ * interpolate the raw identifier directly (e.g. literally asking
+ * "...עבור: surgeries_israel?"), never actually translated — caught after
+ * user feedback that questionnaire questions need to be understandable
+ * without already knowing the domain's internal names.
+ */
+const HEALTH_MODULE_QUESTION_TEXT: Record<HealthCoverageModule, { label: string; helpText: string }> = {
+  surgeries_israel: {
+    label: "ניתוחים בישראל",
+    helpText: "בחירת מנתח ובית חולים פרטיים לניתוחים בישראל, מעבר למה שסל הבריאות הציבורי מכסה.",
+  },
+  surgeries_abroad: {
+    label: "ניתוחים בחו״ל",
+    helpText: "מימון טיסה, שהות וניתוח בחו״ל, בדרך כלל כשהטיפול הנדרש אינו זמין/מומלץ בישראל.",
+  },
+  transplants: {
+    label: "השתלות",
+    helpText: "כיסוי עלויות השתלת איברים בארץ ובחו״ל, כולל איתור תורם.",
+  },
+  special_treatments_abroad: {
+    label: "טיפולים מיוחדים בחו״ל",
+    helpText: "טיפולים רפואיים חדשניים שאינם זמינים בישראל.",
+  },
+  medications_outside_basket: {
+    label: "תרופות מחוץ לסל",
+    helpText: "תרופות שאינן כלולות בסל הבריאות הציבורי — כולל תרופות יקרות או ניסיוניות.",
+  },
+  ambulatory: {
+    label: "אמבולטורי",
+    helpText: "בדיקות, ייעוצים וטיפולים אצל רופאים מומחים ללא צורך באשפוז.",
+  },
+  personalized_medicine: {
+    label: "רפואה מותאמת אישית",
+    helpText: "בדיקות גנטיות/מולקולריות וטיפול המותאם אישית לפי תוצאותיהן.",
+  },
+};
 
 /**
  * Starter questionnaire — PRD §49. ONE unified question bank across all
@@ -45,6 +86,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "household",
     text: "כמה ילדים או תלויים כלכליים יש במשפחה?",
+    helpText: "כולל ילדים, הורים או כל בן משפחה אחר שתלוי כלכלית בהכנסה שלך. אם אין — הזן 0.",
     answerType: "number",
     required: true,
     validation: [{ kind: "range", params: { min: 0, max: 15 }, severity: "warning", message: "מספר תלויים גבוה מהרגיל — נכון?" }],
@@ -120,6 +162,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "income",
     text: "כמה הכנסה חודשית אמינה תישאר למשפחה במקרה פטירה או אבדן כושר עבודה שלך? (למשל הכנסת בן/בת הזוג)",
+    helpText: "כוונה להכנסה יציבה שתמשיך להיכנס גם בלעדיך — למשל משכורת של בן/בת הזוג או קצבת שאירים. אל תכלול חסכונות חד-פעמיים או נכסים — אלה נשאלים בנפרד. אם אין הכנסה כזו, הזן 0.",
     answerType: "money",
     required: true,
     normalizer: "roundMoneyToShekel",
@@ -167,6 +210,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "debts",
     text: "האם יש ביטוח חיים למשכנתה עם הבנק/הגוף המלווה כמוטב?",
+    helpText: "זהו הביטוח שהבנק דרש כתנאי למשכנתה — הפיצוי הולך לבנק כדי לסגור את יתרת ההלוואה, לא למשפחה. שונה מביטוח חיים \"רגיל\" שבו המוטב הוא בן/בת הזוג או הילדים (זה נשאל בנפרד).",
     answerType: "boolean",
     required: false,
     showWhen: { questionId: "debt_mortgage_exists", operator: "==", value: true },
@@ -214,6 +258,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "existing_coverage",
     text: "מה סכום ביטוח מחלות קשות הקיים שלך?",
+    helpText: "פוליסה שמשלמת סכום חד-פעמי באבחון מחלה קשה (סרטן, אוטם, שבץ וכו'), ללא קשר להוצאות בפועל. אם אין לך כזו, הזן 0.",
     answerType: "money",
     required: true,
     normalizer: "roundMoneyToShekel",
@@ -225,6 +270,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "existing_coverage",
     text: "האם יש לך ביטוח סיעודי קיים? אם כן, מה גובה הקצבה החודשית?",
+    helpText: "אם אין לך ביטוח סיעודי — השאר ריק או הזן 0. אם יש, ציין את הקצבה החודשית שהפוליסה מבטיחה במקרה של תלות בזולת (לא כולל קצבת ביטוח לאומי).",
     answerType: "money",
     required: false,
     normalizer: "roundMoneyToShekel",
@@ -236,6 +282,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "assets",
     text: "כמה נכסים נזילים (מזומן/פיקדונות) תייעד המשפחה להתמודדות עם אובדן הכנסה?",
+    helpText: "כסף בעו״ש, פיקדונות או קרנות נזילות שהמשפחה תהיה מוכנה להשתמש בו במקרה חירום — לא כולל חיסכון פנסיוני או נכסים לא-נזילים כמו דירה. ככל שתייעד יותר, כך יקטן הפער שהביטוח צריך לכסות. אם אין, הזן 0.",
     answerType: "money",
     required: true,
     normalizer: "roundMoneyToShekel",
@@ -247,6 +294,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "assets",
     text: "כמה יכולה המשפחה לממן מדי חודש באופן עצמאי לצורך סיעודי, אם יידרש?",
+    helpText: "לדוגמה מקצבת פנסיה נוספת, שכר דירה, או משיכה חודשית מחיסכון — הסכום שהמשפחה יכולה לשאת בעצמה לפני שהביטוח נדרש. אם אין, הזן 0.",
     answerType: "money",
     required: false,
     normalizer: "roundMoneyToShekel",
@@ -258,6 +306,7 @@ export const STARTER_QUESTIONS: Question[] = [
     version: 1,
     category: "goals",
     text: "האם יש רזרבה שתרצה לייעד לחינוך הילדים? אם כן, כמה?",
+    helpText: "סכום חד-פעמי שתרצה להבטיח למימון לימודים (אקדמיה, לימודי מקצוע וכו') של הילדים, מעבר להוצאות השוטפות שכבר ציינת. לא חובה — אפשר להשאיר ריק.",
     answerType: "money",
     required: false,
     showWhen: { questionId: "household_dependents_count", operator: ">", value: 0 },
@@ -290,16 +339,18 @@ export const STARTER_QUESTIONS: Question[] = [
   },
   // One single_select question per PRD §15 health module, generated rather
   // than hand-duplicated 7 times. Answer values are "yes" | "no" | "unknown".
-  ...ALL_HEALTH_COVERAGE_MODULES.map(
-    (module): Question => ({
+  ...ALL_HEALTH_COVERAGE_MODULES.map((module): Question => {
+    const { label, helpText } = HEALTH_MODULE_QUESTION_TEXT[module];
+    return {
       id: `health_module_${module}`,
       version: 1,
       category: "health",
-      text: `האם יש לך כיסוי ביטוחי פרטי עבור: ${module}?`,
+      text: `האם יש לך כיסוי ביטוחי פרטי עבור ${label}?`,
+      helpText,
       answerType: "single_select",
       required: false,
       factsProduced: [`health.module.${module}`],
       decisionImpact: 0.2,
-    }),
-  ),
+    };
+  }),
 ];
