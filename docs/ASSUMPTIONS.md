@@ -139,9 +139,12 @@ something concrete to start tuning.
 
 ## Adaptive Questionnaire (all five calculators, one bank)
 
-- `decisionImpact` per question (0.1 to 0.9) — invented, hand-ranked by
+- `decisionImpact` per question (0.1 to 0.95) — invented, hand-ranked by
   "how much does this change a recommendation", not derived from any
-  sensitivity analysis.
+  sensitivity analysis. `household_marital_status` was raised from an
+  initial 0.2 to 0.95 (now the highest in the bank, asked first) after
+  direct user feedback that framing questions like this belong at the
+  start, not scored as an afterthought.
 - `userBurdenPenalty` per `answerType` (boolean 0.05 → multi_select 0.2) —
   invented ordering (fewer taps/thought = lower burden), not measured.
 - `income.survivor.reliableMonthly` and `expenses.household.monthly` each

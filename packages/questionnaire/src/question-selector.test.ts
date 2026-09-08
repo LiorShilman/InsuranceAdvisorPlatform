@@ -4,14 +4,15 @@ import { getNextQuestion, completionScore } from "./question-selector.js";
 import { STARTER_QUESTIONS } from "./starter-questionnaire.js";
 
 describe("getNextQuestion (PRD §7.2)", () => {
-  it("1. with no answers, returns the highest decisionImpact-minus-burden relevant question", () => {
+  it("1. with no answers, returns the highest decisionImpact-minus-burden relevant question (marital status frames everything else)", () => {
     const next = getNextQuestion(STARTER_QUESTIONS, {});
-    expect(next?.id).toBe("household_dependents_count");
+    expect(next?.id).toBe("household_marital_status");
   });
 
   it("2. never returns an already-answered question", () => {
-    const answers = { household_dependents_count: 2 };
+    const answers = { household_marital_status: "single" as unknown, household_dependents_count: 2 };
     const next = getNextQuestion(STARTER_QUESTIONS, answers);
+    expect(next?.id).not.toBe("household_marital_status");
     expect(next?.id).not.toBe("household_dependents_count");
   });
 

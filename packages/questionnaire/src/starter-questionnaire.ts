@@ -34,7 +34,11 @@ export const STARTER_QUESTIONS: Question[] = [
     answerType: "single_select",
     required: true,
     factsProduced: ["household.maritalStatus"],
-    decisionImpact: 0.2,
+    // Highest decisionImpact in the bank: this frames almost everything that
+    // follows (is there a spouse whose income/continuation matters at all?),
+    // so it should be the very first question asked, not a late one. Raised
+    // from 0.2 after direct user feedback that it was scored too low.
+    decisionImpact: 0.95,
   },
   {
     id: "household_dependents_count",
