@@ -2,6 +2,46 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Real persistence: Postgres migration run + API layer (Milestone 6 start)
+
+1. **Docker Desktop became reachable this session** — ran the actual
+   `prisma migrate dev` against real PostgreSQL for the first time (27
+   tables created, matching `prisma/schema.prisma` exactly). This was
+   blocked since Milestone 1; no schema changes were needed to make it
+   work, confirming the schema itself was sound all along.
+2. **No auth system exists yet, so there is exactly one "demo" client
+   profile per local database** (`lib/demo-profile.ts`), identified by a
+   fixed email, bootstrapped on first API call. This is explicitly a
+   placeholder for real multi-user auth (§34), not a design pattern to
+   extend — the day real login exists, this file gets deleted, not grown.
+3. **Chose Next.js Route Handlers (`app/api/*/route.ts`) over standing up
+   a separate NestJS/Fastify service** — the NestJS-vs-Fastify choice was
+   deferred back in Milestone 1 (see that entry). Given how much of the
+   engine already lives in `packages/calculators`/`packages/questionnaire`
+   and runs fine in a Next.js server context, adding a separate backend
+   process now would be pure ceremony for what's still a single
+   read/write-facts API. Revisit this choice when the API surface grows
+   past what Route Handlers comfortably express (auth, background jobs,
+   the audit-event-write-path separation §36 asks for).
+4. **`Fact` has no unique constraint on `(clientProfileId, key)` in the
+   schema** (only an index) — `POST /api/facts` does a manual
+   find-then-update-or-create instead of a real Prisma `upsert`. Correct
+   for a single-user local demo with no concurrent writers; would need
+   the real unique constraint (a migration) for any multi-user use.
+5. **`persistFact` is fire-and-forget from the client** — a failed save
+   logs to the console and leaves the in-memory answer as the source of
+   truth for the rest of that session, but does NOT retry or surface an
+   error to the user. PRD §55 ("no recommendation loss on refresh") is
+   satisfied for the success path only; a real product needs retry/error
+   UI here, not just a console.error.
+6. **`next build` failed once with a `Cannot find module './193.js'`
+   error while collecting page data for `/api/facts`** — caused by a
+   stale `.next` build directory left over from a concurrently-running
+   dev server on the same directory, not a real code issue. Fixed by
+   stopping the dev server and deleting `.next` before rebuilding.
+   Documented in case it recurs — it's a build-cache hygiene issue, not
+   something to "fix" in the API route itself.
+
 ## 2026-09-08 — Fixed: text input invisible when unfocused
 
 The questionnaire's free-text/number/money `<input>` only had a `border`

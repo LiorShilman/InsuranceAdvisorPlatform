@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Money, type Fact } from "@insurance-advisor/shared";
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
@@ -168,8 +168,61 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
   );
 }
 
+const FACT_KEY_TO_QUESTION_ID = new Map<string, string>(
+  STARTER_QUESTIONS.flatMap((q) => q.factsProduced.map((factKey) => [factKey, q.id] as const)),
+);
+
+/** Best-effort: a failed persist shouldn't block the user from continuing the flow client-side. */
+function persistFact(clientProfileId: string, fact: Fact): void {
+  fetch("/api/facts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      clientProfileId,
+      key: fact.key,
+      value: fact.value,
+      source: fact.source,
+      confidence: fact.confidence,
+      verified: fact.verified,
+    }),
+  }).catch(() => {
+    // A real product would surface/retry this (PRD §34: no silent data loss). Logged, not hidden.
+    console.error(`Failed to persist fact ${fact.key} — it only exists client-side until the next successful save.`);
+  });
+}
+
 export default function QuestionnairePage() {
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [clientProfileId, setClientProfileId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // Real persistence (PRD §55: "no recommendation loss on page refresh") — backed by the
+  // actual Postgres schema (prisma/schema.prisma), not browser-only state. One demo profile
+  // per local database (no auth yet) — see lib/demo-profile.ts.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const profileRes = await fetch("/api/profile");
+      const { clientProfileId: id } = (await profileRes.json()) as { clientProfileId: string };
+      if (cancelled) return;
+      setClientProfileId(id);
+
+      const factsRes = await fetch(`/api/facts?clientProfileId=${id}`);
+      const { facts: savedFacts } = (await factsRes.json()) as { facts: Array<{ key: string; value: unknown }> };
+      if (cancelled) return;
+
+      const rehydrated: Record<string, unknown> = {};
+      for (const fact of savedFacts) {
+        const questionId = FACT_KEY_TO_QUESTION_ID.get(fact.key);
+        if (questionId) rehydrated[questionId] = fact.value;
+      }
+      setAnswers(rehydrated);
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const next = useMemo(() => getNextQuestion(STARTER_QUESTIONS, answers), [answers]);
   const progress = useMemo(() => completionScore(STARTER_QUESTIONS, answers), [answers]);
@@ -184,13 +237,29 @@ export default function QuestionnairePage() {
     [answers],
   );
 
+  function handleAnswer(question: Question, value: unknown) {
+    setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    if (value !== undefined && clientProfileId) {
+      for (const fact of produceFacts(question, value)) {
+        persistFact(clientProfileId, fact);
+      }
+    }
+  }
+
+  async function handleRestart() {
+    setAnswers({});
+    if (clientProfileId) {
+      await fetch(`/api/facts?clientProfileId=${clientProfileId}`, { method: "DELETE" }).catch(() => {});
+    }
+  }
+
   return (
     <main>
       <h1>שאלון אינטראקטיבי — כל צרכי הביטוח</h1>
       <p className="subtitle">
-        Milestone 2 (PRD §7, §49) · שאלון אחד מאוחד לכל חמשת המחשבונים — לא חמישה שאלונים נפרדים. השאלה הבאה נבחרת
-        דינמית לפי decisionImpact ורלוונטיות (showWhen). התשובות הופכות ל-Facts (§8) שעוברות דרך מתאמי ה-Facts
-        האמיתיים, לא פיקסצ׳ר קשיח.
+        Milestone 2 + התחלת Milestone 6 (PRD §7, §49, §55) · שאלון אחד מאוחד לכל חמשת המחשבונים. התשובות נשמרות
+        באמת ב-PostgreSQL (לא רק בזיכרון הדפדפן) — רענון הדף לא מוחק התקדמות. השאלה הבאה נבחרת דינמית לפי
+        decisionImpact ורלוונטיות (showWhen).
       </p>
       <p>
         <Link href="/" style={{ color: "var(--accent)" }}>
@@ -204,15 +273,12 @@ export default function QuestionnairePage() {
         }
       </div>
 
-      {next ? (
-        <QuestionForm
-          key={next.id}
-          question={next}
-          progress={progress}
-          onAnswer={(value) => setAnswers((prev) => ({ ...prev, [next.id]: value }))}
-        />
+      {!loaded ? (
+        <p>טוען נתונים שמורים...</p>
+      ) : next ? (
+        <QuestionForm key={next.id} question={next} progress={progress} onAnswer={(value) => handleAnswer(next, value)} />
       ) : (
-        <LiveRecommendations facts={facts} onRestart={() => setAnswers({})} />
+        <LiveRecommendations facts={facts} onRestart={handleRestart} />
       )}
     </main>
   );

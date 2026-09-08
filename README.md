@@ -4,27 +4,40 @@ Implementation of `INSURANCE_ADVISOR_PRD_v1.0.md` (Insurance Needs Analysis
 Platform). This is a **separate project** from `ls-financial-advisor` — see
 `docs/DECISIONS.md` for why.
 
-**Current milestone: Milestone 1 — Domain Foundation** (PRD §45). Nothing
-past domain types, the DB schema, Money/CalculationTrace, Facts, rule/
-calculator *interfaces*, and 5 test fixtures exists yet. No rule evaluation,
-no calculator math, no questionnaire logic, no API, no UI. See
-`docs/DECISIONS.md` and `docs/ASSUMPTIONS.md` for exactly what was and
-wasn't built and why.
+**Status: Milestones 1, 3, 4, 5 done; Milestone 2 (questionnaire) and
+Milestone 6 (UI/persistence) started.** All five need calculators (life,
+disability, critical illness, health-by-module, LTC) are real and tested,
+along with the rule engine, deduplication engine, priority engine,
+budget/affordability layer, recommendation object, and review scheduler.
+A real adaptive questionnaire drives all five from one set of answers, and
+those answers now persist to a real PostgreSQL database (not just browser
+state). See `docs/DECISIONS.md` for the full, dated history of what was
+built and why, and `docs/ASSUMPTIONS.md` for every invented placeholder
+number that still needs real product/actuarial/legal review.
+
+Still missing: authentication (there is exactly one hardcoded "demo"
+profile per database — see `apps/web/lib/demo-profile.ts`), the report/PDF
+export (§39), the LLM explanation layer (§29), the admin console (§51),
+and Product Matching/real pricing (§50, explicitly Phase 2).
 
 ## Layout
 
 ```
-apps/web        placeholder — Milestone 6 (Next.js client)
-apps/api        placeholder — Milestone 2 (API server, framework TBD)
-packages/shared        Money, CalculationTrace, Assumption, Fact (PRD §8, §25)
-packages/rules         Rule/NeedStatus types + RuleEngine interface (PRD §11) — no evaluation logic yet
-packages/domain        Core entities: Person, Household, Coverage, Recommendation, ... (PRD §26.1, §21)
-packages/config        EngineConfig type + starter version (PRD §41)
-packages/questionnaire Question schema type only (PRD §7.1) — no selection logic yet
-packages/calculators   Generic NeedsCalculator interface (PRD §10) — no life/DI/CI/health/LTC math yet
-packages/test-fixtures 5 representative households (PRD §47 pt 9)
-prisma/schema.prisma   PostgreSQL schema (PRD §26.2)
-docs/                  DECISIONS.md, ASSUMPTIONS.md, REGULATORY-TODO.md (PRD rules 18-20)
+apps/web               Next.js app — two pages (fixture-driven preview at
+                        `/`, a real interactive questionnaire at
+                        `/questionnaire`) plus a small API
+                        (`app/api/profile`, `app/api/facts`) backed by
+                        Prisma/Postgres
+packages/shared         Money, CalculationTrace, Assumption, Fact (PRD §8, §25)
+packages/rules          Rule/NeedStatus types + a real SimpleRuleEngine (PRD §11)
+packages/domain         Core entities: Person, Household, Coverage, Recommendation, ... (PRD §26.1, §21)
+packages/config         Versioned EngineConfig + starter values (PRD §41)
+packages/questionnaire  Question schema, selector, validation, fact production (PRD §7, §49)
+packages/calculators    All 5 need calculators, priority/budget/recommendation/review
+                        engines, and the real Facts→calculator-input adapters (PRD §10-22)
+packages/test-fixtures  5 representative households incl. an exact PRD §57 reproduction
+prisma/schema.prisma    PostgreSQL schema (PRD §26.2) — migrated and live
+docs/                   DECISIONS.md, ASSUMPTIONS.md, REGULATORY-TODO.md (PRD rules 18-20)
 ```
 
 ## Getting started
@@ -33,19 +46,27 @@ docs/                  DECISIONS.md, ASSUMPTIONS.md, REGULATORY-TODO.md (PRD rul
 npm install
 npm run typecheck   # tsc -b, strict mode, no `any`
 npm run lint
-npm test            # vitest
+npm test            # vitest — 130+ tests across every calculator/engine
 
-# Postgres (only needed once Prisma migrations are actually run):
+# Postgres (needed for apps/web's API routes / the questionnaire's persistence):
 docker compose up -d
-cp .env.example .env
-npm run prisma:validate
-npm run prisma:generate
+cp .env.example .env   # only if you don't already have one
 npm run prisma:migrate
+
+npm run preview     # starts apps/web on the fixed port http://localhost:4310
 ```
 
-## Next steps (not started)
+Open `http://localhost:4310` for the fixture-driven preview (5 hardcoded
+households) or `http://localhost:4310/questionnaire` for the real,
+persisted, interactive flow.
 
-- Milestone 2 — Adaptive Questionnaire engine (PRD §45, §49): question
-  selection logic, `apps/api` scaffold.
-- Milestone 3 — Rule engine evaluation + Life Insurance calculator (PRD §45,
-  §48).
+## Next steps
+
+- Widen the questionnaire's 19-question starter bank (still far short of
+  the PRD's illustrative "~70 questions", §7.1).
+- Report generation (§39) and the LLM explanation-only layer (§29).
+- Real authentication, replacing `lib/demo-profile.ts`'s single hardcoded
+  profile.
+- Revisit the Next.js-Route-Handlers-as-API decision (docs/DECISIONS.md)
+  once auth/background-jobs/audit-write-path needs grow past what that
+  comfortably expresses.
