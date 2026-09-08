@@ -2,6 +2,17 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Fixed: text input invisible when unfocused
+
+The questionnaire's free-text/number/money `<input>` only had a `border`
+set inline, no explicit `background`/`color` — reported by a user as "the
+input disappears without focus". Moved to a `.form-input` CSS class in
+`globals.css` with explicit `background`/`color`/`border` in all states
+plus a visible `:focus` style, so there's nothing left for a browser or a
+content-altering extension (this session already has direct evidence of
+one running in the user's browser — see the earlier console-log exchange)
+to guess wrong about.
+
 ## 2026-09-08 — Questionnaire extended to all five calculators (unified bank)
 
 1. **One unified `STARTER_QUESTIONS` bank replaces the life-only one** —

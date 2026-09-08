@@ -138,7 +138,8 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
           <input
             type={question.answerType === "date" ? "date" : "text"}
             inputMode={question.answerType === "number" || question.answerType === "money" ? "decimal" : undefined}
-            style={{ flex: 1, padding: 10, fontSize: "1rem", borderRadius: 8, border: "1px solid var(--border)" }}
+            className="form-input"
+            style={{ flex: 1, padding: 10, fontSize: "1rem", borderRadius: 8 }}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}

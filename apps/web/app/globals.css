@@ -193,3 +193,24 @@ table.trace td.amount {
   font-size: 0.82rem;
   color: var(--muted);
 }
+
+/*
+ * Explicit background/color/border on every state, not just a bare
+ * `border` — an unfocused native <input> with no explicit background/color
+ * can end up unreadable (e.g. a dark-mode browser extension inverts the
+ * page and gets it wrong without an explicit value to work from). Reported
+ * by a user as "the input disappears without focus".
+ */
+.form-input {
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+.form-input::placeholder {
+  color: var(--muted);
+}
