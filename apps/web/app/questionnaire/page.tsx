@@ -206,6 +206,7 @@ export default function QuestionnairePage() {
 
       {next ? (
         <QuestionForm
+          key={next.id}
           question={next}
           progress={progress}
           onAnswer={(value) => setAnswers((prev) => ({ ...prev, [next.id]: value }))}
