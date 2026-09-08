@@ -2,6 +2,60 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Visual redesign pass: real design system + dark mode
+
+User feedback after Milestones 1-7 logic was complete: "עדיין התמקדנו
+בלוגיקה עד עכשיו, ה-UI עדיין לא ממומש למערכת רצינית" (we've focused on
+logic so far, the UI isn't built for a serious product), immediately
+followed by "ולא לשכוח שהמערכת הסופית לא צריכה להיות בתצוגה סטנדרתית
+פשוטה ב-LIGHTMODE" (the final system must not be plain light-mode-only).
+This entry covers the full response.
+
+1. **Design tokens, not hardcoded colors.** `globals.css` now defines a
+   full CSS-custom-property palette (`--bg`, `--surface`, `--surface-alt`,
+   `--border`, `--text`, `--muted`, `--brand`/`--brand-dark`/`--brand-bg`,
+   `--info`/`--success`/`--warning`/`--danger` + their `-bg` variants,
+   shadows, radii). Every component references tokens, never literal hex
+   values, so a single palette swap re-themes the whole app.
+2. **Real dark mode, not just a "dark CSS file".** Tokens are redefined
+   twice: once under `@media (prefers-color-scheme: dark)` guarded by
+   `:root:not([data-theme="light"])` (follows the OS by default), and
+   again under `:root[data-theme="dark"]` (wins when the user explicitly
+   picks a theme). `NavBar` adds a theme toggle (system → light → dark →
+   system) persisted to `localStorage`, since it's a per-device viewing
+   preference, not app data — same reasoning already used for other
+   client-only UI state in this codebase.
+3. **A previously-undetected bug this pass fixed as a side effect**:
+   `page.tsx`, `questionnaire/page.tsx` and `report/page.tsx` all
+   referenced `var(--accent)` and `var(--gap)`, CSS variables that never
+   existed even in the pre-redesign `globals.css` (the old file used
+   different names) — those links/error-texts were silently rendering in
+   an unstyled fallback color. Replaced with the real tokens (`--brand`,
+   `--danger`).
+4. **New `.card-header`/`.card-icon` + a `coverageRatio` prop on
+   `ResultCard`** — each result now shows a category emoji and a
+   proportional "existing vs. gap" bar, computed from the *same*
+   `PriorityEngine.gapRatioAndCoverageAdequacy(...)` call already used for
+   scoring (exposed as `coverageRatio` on each category in
+   `compute-recommendations.ts`'s `ComputedRecommendations`), so the bar
+   and the priority score can never silently disagree with each other.
+5. **Questionnaire wizard redesigned** (`.wizard-card`,
+   `.wizard-progress-track/fill`, `.choice-grid`/`.choice-card`) —
+   boolean/single-select answers used to be `<button className="badge">`,
+   i.e. literally the same visual language as a non-interactive status
+   pill. Real buttons now use `.btn`/`.btn-primary`/`.btn-ghost`,
+   distinct from `.badge` (info-only, non-clickable).
+6. **Home page's 5 fixtures wrapped in `<details className="persona-accordion">`**
+   instead of a flat, always-expanded list of 5×(4 cards) — makes the
+   page scannable instead of one long scroll of every persona's full
+   detail at once.
+7. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (136/136) and a
+   clean `next build` (stopped the running dev server + cleared `.next`
+   first, per the port/stale-cache lesson from earlier in this project)
+   all pass; confirmed live via curl against the restarted dev server
+   (port 4310) that `/`, `/questionnaire`, `/report` all return 200 and
+   the new `app-nav`/`persona-accordion`/`card-icon` markup is present.
+
 ## 2026-09-08 — Budget/Affordability wired into the live flow (closes report §10)
 
 1. **Added one question** (`budget_monthly_protection`) instead of a

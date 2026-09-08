@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Fact } from "@insurance-advisor/shared";
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import { STARTER_QUESTIONS } from "@insurance-advisor/questionnaire";
-import { ResultCard, formatExact, PRIORITY_BAND_LABELS } from "../components/result-card";
+import { ResultCard, CATEGORY_ICONS, formatExact, PRIORITY_BAND_LABELS } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations, type ComputedRecommendations } from "../../lib/compute-recommendations";
 
@@ -92,13 +92,14 @@ export default function ReportPage() {
         <h1>דוח צרכי ביטוח מלא</h1>
         <p className="subtitle">PRD §39 · נבנה מהנתונים השמורים האמיתיים שלך (PostgreSQL), לא ממוקאפ.</p>
         <p>
-          <Link href="/questionnaire" style={{ color: "var(--accent)" }}>
+          <Link href="/questionnaire" style={{ color: "var(--brand)" }}>
             ← חזרה לשאלון
           </Link>
           {"   "}
           <button
-            className="badge priority-HIGH"
-            style={{ cursor: "pointer", marginInlineStart: 8 }}
+            type="button"
+            className="btn btn-primary btn-sm"
+            style={{ marginInlineStart: 8 }}
             onClick={() => {
               // <details> content is only visible when [open] — CSS alone can't reveal it for
               // print, so force every trace open right before printing.
@@ -207,6 +208,8 @@ export default function ReportPage() {
         <h2>8. המלצות מפורטות</h2>
         <ResultCard
           title="ביטוח חיים"
+          icon={CATEGORY_ICONS.life}
+          coverageRatio={computed.life.coverageRatio}
           badges={[`טווח הגנה: ${computed.life.result.horizonYears} שנים`]}
           confidence={computed.life.result.confidence}
           priority={computed.life.priority}
@@ -224,6 +227,8 @@ export default function ReportPage() {
         />
         <ResultCard
           title="ביטוח אבדן כושר עבודה"
+          icon={CATEGORY_ICONS.disability}
+          coverageRatio={computed.disability.coverageRatio}
           badges={[]}
           confidence={computed.disability.result.confidence}
           priority={computed.disability.priority}
@@ -241,6 +246,8 @@ export default function ReportPage() {
         />
         <ResultCard
           title="ביטוח מחלות קשות"
+          icon={CATEGORY_ICONS.critical_illness}
+          coverageRatio={computed.ci.coverageRatio}
           badges={["תרחיש: 6 חודשים"]}
           confidence={computed.ci.result.confidence}
           priority={computed.ci.priority}
@@ -258,6 +265,8 @@ export default function ReportPage() {
         />
         <ResultCard
           title="ביטוח סיעודי"
+          icon={CATEGORY_ICONS.ltc}
+          coverageRatio={computed.ltc.coverageRatio}
           badges={["תרחיש: תוחלת 3 שנים"]}
           confidence={computed.ltc.result.confidence}
           priority={computed.ltc.priority}

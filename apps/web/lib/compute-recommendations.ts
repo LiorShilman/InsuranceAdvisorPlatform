@@ -46,10 +46,10 @@ const reviewScheduler = new ReviewScheduler();
 const budgetAffordabilityEngine = new BudgetAffordabilityEngine();
 
 export type ComputedRecommendations = {
-  life: { result: LifeInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string; affordability: AffordabilityResult };
-  disability: { result: DisabilityInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
-  ci: { result: CriticalIllnessResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
-  ltc: { result: LongTermCareResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string };
+  life: { result: LifeInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string; affordability: AffordabilityResult; coverageRatio: number };
+  disability: { result: DisabilityInsuranceResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string; coverageRatio: number };
+  ci: { result: CriticalIllnessResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string; coverageRatio: number };
+  ltc: { result: LongTermCareResult; trace: CalculationTrace; priority: PriorityResult; recommendation: Recommendation; nextReviewDate: string; coverageRatio: number };
   health: HealthAssessmentResult;
   hasDependents: boolean;
 };
@@ -76,29 +76,27 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
   const monthlyBudget = typeof monthlyBudgetValue === "number" ? Money.fromNumber(monthlyBudgetValue) : undefined;
   const lifeAffordability = budgetAffordabilityEngine.evaluate({ calculatedNeed: life.result.gap, monthlyBudget }, STARTER_ENGINE_CONFIG);
 
+  const lifeGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber());
   const lifePriority = priorityEngine.score(
-    {
-      category: "life",
-      ...PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber()),
-      hasDependents,
-      affordabilityPenalty: lifeAffordability.affordabilityPenalty,
-    },
+    { category: "life", ...lifeGapFactors, hasDependents, affordabilityPenalty: lifeAffordability.affordabilityPenalty },
     STARTER_ENGINE_CONFIG,
+  );
+  const disabilityGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(
+    disability.result.requiredMonthlyIncome.toNumber(),
+    disability.result.existingNetExpectedDisabilityIncome.toNumber(),
   );
   const disabilityPriority = priorityEngine.score(
-    {
-      category: "disability",
-      ...PriorityEngine.gapRatioAndCoverageAdequacy(disability.result.requiredMonthlyIncome.toNumber(), disability.result.existingNetExpectedDisabilityIncome.toNumber()),
-      hasDependents,
-    },
+    { category: "disability", ...disabilityGapFactors, hasDependents },
     STARTER_ENGINE_CONFIG,
   );
+  const ciGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(ci.result.need.toNumber(), ci.result.existingCoverage.toNumber());
   const ciPriority = priorityEngine.score(
-    { category: "critical_illness", ...PriorityEngine.gapRatioAndCoverageAdequacy(ci.result.need.toNumber(), ci.result.existingCoverage.toNumber()), hasDependents },
+    { category: "critical_illness", ...ciGapFactors, hasDependents },
     STARTER_ENGINE_CONFIG,
   );
+  const ltcGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(ltc.result.capitalNeed.toNumber(), 0);
   const ltcPriority = priorityEngine.score(
-    { category: "ltc", ...PriorityEngine.gapRatioAndCoverageAdequacy(ltc.result.capitalNeed.toNumber(), 0), hasDependents },
+    { category: "ltc", ...ltcGapFactors, hasDependents },
     STARTER_ENGINE_CONFIG,
   );
 
@@ -180,10 +178,39 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
   );
 
   return {
-    life: { result: life.result, trace: life.trace, priority: lifePriority, recommendation: lifeRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(lifeRecommendation, now), affordability: lifeAffordability },
-    disability: { result: disability.result, trace: disability.trace, priority: disabilityPriority, recommendation: disabilityRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(disabilityRecommendation, now) },
-    ci: { result: ci.result, trace: ci.trace, priority: ciPriority, recommendation: ciRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(ciRecommendation, now) },
-    ltc: { result: ltc.result, trace: ltc.trace, priority: ltcPriority, recommendation: ltcRecommendation, nextReviewDate: reviewScheduler.nextReviewDate(ltcRecommendation, now) },
+    life: {
+      result: life.result,
+      trace: life.trace,
+      priority: lifePriority,
+      recommendation: lifeRecommendation,
+      nextReviewDate: reviewScheduler.nextReviewDate(lifeRecommendation, now),
+      affordability: lifeAffordability,
+      coverageRatio: lifeGapFactors.coverageAdequacy,
+    },
+    disability: {
+      result: disability.result,
+      trace: disability.trace,
+      priority: disabilityPriority,
+      recommendation: disabilityRecommendation,
+      nextReviewDate: reviewScheduler.nextReviewDate(disabilityRecommendation, now),
+      coverageRatio: disabilityGapFactors.coverageAdequacy,
+    },
+    ci: {
+      result: ci.result,
+      trace: ci.trace,
+      priority: ciPriority,
+      recommendation: ciRecommendation,
+      nextReviewDate: reviewScheduler.nextReviewDate(ciRecommendation, now),
+      coverageRatio: ciGapFactors.coverageAdequacy,
+    },
+    ltc: {
+      result: ltc.result,
+      trace: ltc.trace,
+      priority: ltcPriority,
+      recommendation: ltcRecommendation,
+      nextReviewDate: reviewScheduler.nextReviewDate(ltcRecommendation, now),
+      coverageRatio: ltcGapFactors.coverageAdequacy,
+    },
     health,
     hasDependents,
   };

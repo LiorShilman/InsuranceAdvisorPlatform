@@ -23,7 +23,12 @@ export function HealthModuleCard(props: { assessments: ReturnType<HealthModuleAs
   const { assessments } = props;
   return (
     <section className="card">
-      <h2>ביטוח בריאות פרטי — לפי מודול</h2>
+      <div className="card-header">
+        <span className="card-icon" aria-hidden="true">
+          ⚕️
+        </span>
+        <h2>ביטוח בריאות פרטי — לפי מודול</h2>
+      </div>
       <div className="badges">
         <span className={`badge confidence-${assessments.confidence}`}>
           אמינות נתונים: {CONFIDENCE_LABELS[assessments.confidence]}

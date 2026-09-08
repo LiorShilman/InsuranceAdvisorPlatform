@@ -4,7 +4,7 @@ import { ALL_HOUSEHOLD_FIXTURES } from "@insurance-advisor/test-fixtures";
 import { Money } from "@insurance-advisor/shared";
 import type { InsuranceCategory } from "@insurance-advisor/domain";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
-import { ResultCard, formatExact } from "./components/result-card";
+import { ResultCard, CATEGORY_ICONS, formatExact } from "./components/result-card";
 import { HealthModuleCard } from "./components/health-module-card";
 import {
   LifeInsuranceCalculator,
@@ -54,7 +54,7 @@ export default function PreviewPage() {
         הכחול) — על 5 פרופילי בדיקה ישירות מהקוד, ללא שאלון, ללא API, ללא אחסון.
       </p>
       <p style={{ marginTop: -8 }}>
-        <Link href="/questionnaire" style={{ color: "var(--accent)", fontWeight: 600 }}>
+        <Link href="/questionnaire" style={{ color: "var(--brand)", fontWeight: 600 }}>
           → נסה את השאלון האינטראקטיבי האמיתי (Milestone 2, §7/§49) — הזן את הנתונים שלך עצמך
         </Link>
       </p>
@@ -93,45 +93,29 @@ export default function PreviewPage() {
 
         const hasDependents = lifeInput.dependentCount > 0;
 
+        const lifeGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber());
         const lifePriority = priorityEngine.score(
-          {
-            category: "life",
-            ...PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber()),
-            hasDependents,
-            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "life"),
-          },
+          { category: "life", ...lifeGapFactors, hasDependents, duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "life") },
           STARTER_ENGINE_CONFIG,
+        );
+        const disabilityGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(
+          disability.result.requiredMonthlyIncome.toNumber(),
+          disability.result.existingNetExpectedDisabilityIncome.toNumber(),
         );
         const disabilityPriority = priorityEngine.score(
-          {
-            category: "disability",
-            ...PriorityEngine.gapRatioAndCoverageAdequacy(
-              disability.result.requiredMonthlyIncome.toNumber(),
-              disability.result.existingNetExpectedDisabilityIncome.toNumber(),
-            ),
-            hasDependents,
-            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "disability"),
-          },
+          { category: "disability", ...disabilityGapFactors, hasDependents, duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "disability") },
           STARTER_ENGINE_CONFIG,
         );
+        const ciGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(ciHeadline.result.need.toNumber(), ciHeadline.result.existingCoverage.toNumber());
         const ciPriority = priorityEngine.score(
-          {
-            category: "critical_illness",
-            ...PriorityEngine.gapRatioAndCoverageAdequacy(ciHeadline.result.need.toNumber(), ciHeadline.result.existingCoverage.toNumber()),
-            hasDependents,
-            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "critical_illness"),
-          },
+          { category: "critical_illness", ...ciGapFactors, hasDependents, duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "critical_illness") },
           STARTER_ENGINE_CONFIG,
         );
         // LTC's capitalNeed is already net of benefits/self-funding (no separate raw need/existing pair to compare) —
         // treated as a simple has-gap/no-gap signal rather than a proportional ratio. See docs/DECISIONS.md.
+        const ltcGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(ltcHeadline.result.capitalNeed.toNumber(), 0);
         const ltcPriority = priorityEngine.score(
-          {
-            category: "ltc",
-            ...PriorityEngine.gapRatioAndCoverageAdequacy(ltcHeadline.result.capitalNeed.toNumber(), 0),
-            hasDependents,
-            duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "ltc"),
-          },
+          { category: "ltc", ...ltcGapFactors, hasDependents, duplicateFlagged: categoryHasDuplicateFlag(dedup, fixture, "ltc") },
           STARTER_ENGINE_CONFIG,
         );
 
@@ -219,14 +203,23 @@ export default function PreviewPage() {
         );
 
         return (
-          <div key={fixture.name}>
-            <h2 style={{ marginBottom: 2 }}>{fixture.name}</h2>
-            <p className="fixture-desc" style={{ marginTop: 0, marginBottom: 14 }}>
-              {fixture.description}
-            </p>
-
+          <details key={fixture.name} className="persona-accordion">
+            <summary>
+              <span className="persona-avatar" aria-hidden="true">
+                {fixture.name.charAt(0)}
+              </span>
+              <span>
+                <strong>{fixture.name}</strong>
+                <span className="fixture-desc" style={{ margin: 0, display: "block" }}>
+                  {fixture.description}
+                </span>
+              </span>
+            </summary>
+            <div className="persona-accordion-body">
             <ResultCard
               title="ביטוח חיים"
+              icon={CATEGORY_ICONS.life}
+              coverageRatio={lifeGapFactors.coverageAdequacy}
               badges={[`טווח הגנה: ${life.result.horizonYears} שנים`]}
               confidence={life.result.confidence}
               priority={lifePriority}
@@ -246,6 +239,8 @@ export default function PreviewPage() {
 
             <ResultCard
               title="ביטוח אבדן כושר עבודה"
+              icon={CATEGORY_ICONS.disability}
+              coverageRatio={disabilityGapFactors.coverageAdequacy}
               badges={[
                 disability.result.recommendedDurationYears !== undefined
                   ? `משך מומלץ: ${disability.result.recommendedDurationYears} שנים`
@@ -268,6 +263,8 @@ export default function PreviewPage() {
 
             <ResultCard
               title="ביטוח מחלות קשות"
+              icon={CATEGORY_ICONS.critical_illness}
+              coverageRatio={ciGapFactors.coverageAdequacy}
               badges={[`תרחיש מוצג: התאוששות ${ciHeadline.recoveryDurationMonths} חודשים`]}
               confidence={ciHeadline.result.confidence}
               priority={ciPriority}
@@ -303,6 +300,8 @@ export default function PreviewPage() {
 
             <ResultCard
               title="ביטוח סיעודי"
+              icon={CATEGORY_ICONS.ltc}
+              coverageRatio={ltcGapFactors.coverageAdequacy}
               badges={[`תרחיש מוצג: תוחלת ${ltcHeadline.expectedDurationYears} שנים`]}
               confidence={ltcHeadline.result.confidence}
               priority={ltcPriority}
@@ -345,7 +344,8 @@ export default function PreviewPage() {
                 ))
               )}
             </section>
-          </div>
+            </div>
+          </details>
         );
       })}
     </main>

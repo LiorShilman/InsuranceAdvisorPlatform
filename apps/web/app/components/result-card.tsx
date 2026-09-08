@@ -59,8 +59,19 @@ export function formatExact(amountExact: string): string {
 
 export type Figure = { label: string; amountExact: string; emphasize?: boolean };
 
+export const CATEGORY_ICONS: Record<string, string> = {
+  life: "❤️",
+  disability: "💪",
+  critical_illness: "🏥",
+  ltc: "🧓",
+  health: "⚕️",
+};
+
 export function ResultCard(props: {
   title: string;
+  icon?: string;
+  /** 0..1 — fraction of the gross need already covered by existing coverage/resources. Renders a proportional bar above the figures. */
+  coverageRatio?: number;
   badges: string[];
   confidence: "high" | "medium" | "low";
   priority?: { band: string; score: number };
@@ -74,10 +85,19 @@ export function ResultCard(props: {
   trace: CalculationTrace;
   extraContent?: React.ReactNode;
 }) {
-  const { title, badges, confidence, priority, status, nextReviewDate, rationale, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
+  const { title, icon, coverageRatio, badges, confidence, priority, status, nextReviewDate, rationale, reasonCodes, figures, note, missingFacts, trace, extraContent } = props;
   return (
     <section className="card">
-      <h2>{title}</h2>
+      <div className="card-header">
+        {icon && <span className="card-icon" aria-hidden="true">{icon}</span>}
+        <h2>{title}</h2>
+      </div>
+
+      {coverageRatio !== undefined && (
+        <div className="gap-bar-track" title={`מכוסה: ${Math.round(Math.min(1, Math.max(0, coverageRatio)) * 100)}%`}>
+          <div className="gap-bar-existing" style={{ width: `${Math.round(Math.min(1, Math.max(0, coverageRatio)) * 100)}%` }} />
+        </div>
+      )}
 
       <div className="badges">
         {priority && (

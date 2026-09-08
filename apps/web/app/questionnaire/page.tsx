@@ -12,7 +12,7 @@ import {
   type Question,
   type ValidationIssue,
 } from "@insurance-advisor/questionnaire";
-import { ResultCard, formatExact } from "../components/result-card";
+import { ResultCard, CATEGORY_ICONS, formatExact } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations } from "../../lib/compute-recommendations";
 
@@ -74,37 +74,32 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
   const options = optionsFor(question);
 
   return (
-    <section className="card">
-      <div style={{ background: "var(--border)", height: 6, borderRadius: 3, marginBottom: 16, overflow: "hidden" }}>
-        <div style={{ background: "var(--accent)", height: "100%", width: `${Math.round(progress * 100)}%`, transition: "width 0.2s" }} />
+    <section className="wizard-card">
+      <div className="wizard-progress-track">
+        <div className="wizard-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
       </div>
 
-      <h2 style={{ marginTop: 0 }}>{question.text}</h2>
-      {question.helpText && <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>{question.helpText}</p>}
+      <h2 className="wizard-question">{question.text}</h2>
+      {question.helpText && <p className="wizard-help">{question.helpText}</p>}
 
       {question.answerType === "boolean" ? (
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="badge" style={{ cursor: "pointer", fontSize: "1rem", padding: "8px 20px" }} onClick={() => onAnswer(true)}>
+        <div className="choice-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <button type="button" className="choice-card" onClick={() => onAnswer(true)}>
             כן
           </button>
-          <button className="badge" style={{ cursor: "pointer", fontSize: "1rem", padding: "8px 20px" }} onClick={() => onAnswer(false)}>
+          <button type="button" className="choice-card" onClick={() => onAnswer(false)}>
             לא
           </button>
         </div>
       ) : question.answerType === "single_select" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="choice-grid">
           {options.map((opt) => (
-            <button
-              key={opt.value}
-              className="badge"
-              style={{ cursor: "pointer", fontSize: "1rem", padding: "8px 16px", textAlign: "right" }}
-              onClick={() => onAnswer(opt.value)}
-            >
+            <button key={opt.value} type="button" className="choice-card" onClick={() => onAnswer(opt.value)}>
               {opt.label}
             </button>
           ))}
           {question.id.startsWith("health_module_") && (
-            <button className="badge" style={{ cursor: "pointer", alignSelf: "flex-start" }} onClick={() => onAnswer(undefined)}>
+            <button type="button" className="btn btn-ghost btn-sm" style={{ justifySelf: "flex-start" }} onClick={() => onAnswer(undefined)}>
               דלג
             </button>
           )}
@@ -115,28 +110,28 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
             type={question.answerType === "date" ? "date" : "text"}
             inputMode={question.answerType === "number" || question.answerType === "money" ? "decimal" : undefined}
             className="form-input"
-            style={{ flex: 1, padding: 10, fontSize: "1rem", borderRadius: 8 }}
+            style={{ flex: 1, padding: "12px 14px", borderRadius: "var(--radius-md)" }}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
             autoFocus
           />
-          <button className="badge priority-HIGH" style={{ cursor: "pointer", fontSize: "1rem", padding: "8px 20px" }} onClick={submit}>
+          <button type="button" className="btn btn-primary" onClick={submit}>
             המשך
           </button>
         </div>
       )}
 
       {!question.required && question.answerType !== "boolean" && question.answerType !== "single_select" && (
-        <p style={{ marginTop: 8 }}>
-          <button className="badge" style={{ cursor: "pointer" }} onClick={() => onAnswer(undefined)}>
+        <p style={{ marginTop: 12 }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAnswer(undefined)}>
             דלג (שאלה לא חובה)
           </button>
         </p>
       )}
 
       {issues.map((issue, i) => (
-        <p key={i} className="missing" style={{ color: issue.severity === "error" ? "var(--gap)" : "var(--muted)" }}>
+        <p key={i} className="missing" style={{ color: issue.severity === "error" ? "var(--danger)" : "var(--muted)" }}>
           {issue.message}
         </p>
       ))}
@@ -269,13 +264,15 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
     <>
       <p style={{ fontWeight: 600 }}>סיימת! אלו ההמלצות המחושבות מהתשובות שלך, ממש עכשיו, על פני כל חמשת הביטוחים:</p>
       <p>
-        <Link href="/report" style={{ color: "var(--accent)", fontWeight: 600 }}>
+        <Link href="/report" style={{ color: "var(--brand)", fontWeight: 600 }}>
           → צפה בדוח המלא (§39)
         </Link>
       </p>
 
       <ResultCard
         title="ביטוח חיים"
+        icon={CATEGORY_ICONS.life}
+        coverageRatio={life.coverageRatio}
         badges={[`טווח הגנה: ${life.result.horizonYears} שנים`]}
         confidence={life.result.confidence}
         priority={life.priority}
@@ -307,6 +304,8 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
 
       <ResultCard
         title="ביטוח אבדן כושר עבודה"
+        icon={CATEGORY_ICONS.disability}
+        coverageRatio={disability.coverageRatio}
         badges={[disability.result.recommendedDurationYears !== undefined ? `משך מומלץ: ${disability.result.recommendedDurationYears} שנים` : "משך מומלץ: לא ידוע"]}
         confidence={disability.result.confidence}
         priority={disability.priority}
@@ -325,6 +324,8 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
 
       <ResultCard
         title="ביטוח מחלות קשות"
+        icon={CATEGORY_ICONS.critical_illness}
+        coverageRatio={ci.coverageRatio}
         badges={["תרחיש מוצג: התאוששות 6 חודשים"]}
         confidence={ci.result.confidence}
         priority={ci.priority}
@@ -345,6 +346,8 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
 
       <ResultCard
         title="ביטוח סיעודי"
+        icon={CATEGORY_ICONS.ltc}
+        coverageRatio={ltc.coverageRatio}
         badges={["תרחיש מוצג: תוחלת 3 שנים"]}
         confidence={ltc.result.confidence}
         priority={ltc.priority}
@@ -360,7 +363,7 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
         trace={ltc.trace}
       />
 
-      <button className="badge" style={{ cursor: "pointer", padding: "8px 20px" }} onClick={onRestart}>
+      <button type="button" className="btn btn-ghost" onClick={onRestart}>
         התחל שאלון מחדש
       </button>
     </>
