@@ -2,9 +2,10 @@ import Link from "next/link";
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import { ALL_HOUSEHOLD_FIXTURES } from "@insurance-advisor/test-fixtures";
 import { Money } from "@insurance-advisor/shared";
-import type { HealthCoverageModule, InsuranceCategory } from "@insurance-advisor/domain";
+import type { InsuranceCategory } from "@insurance-advisor/domain";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
-import { ResultCard, REASON_CODE_LABELS, CONFIDENCE_LABELS, formatExact } from "./components/result-card";
+import { ResultCard, formatExact } from "./components/result-card";
+import { HealthModuleCard } from "./components/health-module-card";
 import {
   LifeInsuranceCalculator,
   DisabilityInsuranceCalculator,
@@ -23,59 +24,10 @@ import {
   fromHouseholdFixtureForLongTermCare,
 } from "@insurance-advisor/calculators";
 
-const HEALTH_MODULE_LABELS: Record<HealthCoverageModule, string> = {
-  surgeries_israel: "ניתוחים בישראל",
-  surgeries_abroad: "ניתוחים בחו״ל",
-  transplants: "השתלות",
-  special_treatments_abroad: "טיפולים מיוחדים בחו״ל",
-  medications_outside_basket: "תרופות מחוץ לסל",
-  ambulatory: "אמבולטורי",
-  personalized_medicine: "רפואה מותאמת אישית",
-};
-
-const HEALTH_NEED_LABELS: Record<string, string> = {
-  high: "גבוה",
-  medium: "בינוני",
-  low: "נמוך",
-  not_applicable: "קיים",
-};
-
 /** Does any flagged duplicate pair for this fixture involve a coverage of the given category? */
 function categoryHasDuplicateFlag(dedup: DeduplicationResult, fixture: HouseholdFixture, category: InsuranceCategory): boolean {
   const idsInCategory = new Set(fixture.coverages.filter((c) => c.category === category).map((c) => c.id));
   return dedup.flags.some((f) => idsInCategory.has(f.coverageIdA) || idsInCategory.has(f.coverageIdB));
-}
-
-function HealthModuleCard(props: { assessments: ReturnType<HealthModuleAssessor["assess"]> }) {
-  const { assessments } = props;
-  return (
-    <section className="card">
-      <h2>ביטוח בריאות פרטי — לפי מודול</h2>
-      <div className="badges">
-        <span className={`badge confidence-${assessments.confidence}`}>
-          אמינות נתונים: {CONFIDENCE_LABELS[assessments.confidence]}
-        </span>
-      </div>
-      <table className="trace">
-        <tbody>
-          {assessments.moduleAssessments.map((a) => (
-            <tr key={a.module}>
-              <td>{HEALTH_MODULE_LABELS[a.module]}</td>
-              <td>{a.existing === "unknown" ? "לא ידוע" : a.existing ? "קיים" : "לא קיים"}</td>
-              <td>עוצמת צורך: {HEALTH_NEED_LABELS[a.need] ?? a.need}</td>
-              <td className="amount">
-                {a.reasonCodes.map((code) => (
-                  <span className="badge" key={code} style={{ marginInlineStart: 4 }}>
-                    {REASON_CODE_LABELS[code] ?? code}
-                  </span>
-                ))}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
-  );
 }
 
 const lifeCalculator = new LifeInsuranceCalculator();

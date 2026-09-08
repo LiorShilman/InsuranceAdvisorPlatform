@@ -137,21 +137,29 @@ something concrete to start tuning.
   suppressed to zero (PRD §43 safety test: "suppresses uninsured gap
   because budget is too low" must fail the build).
 
-## Adaptive Questionnaire (Life Insurance only)
+## Adaptive Questionnaire (all five calculators, one bank)
 
-- `decisionImpact` per question (0.1 to 0.9 across the 12 starter
-  questions) — invented, hand-ranked by "how much does this change a life
-  insurance recommendation", not derived from any sensitivity analysis.
+- `decisionImpact` per question (0.1 to 0.9) — invented, hand-ranked by
+  "how much does this change a recommendation", not derived from any
+  sensitivity analysis.
 - `userBurdenPenalty` per `answerType` (boolean 0.05 → multi_select 0.2) —
   invented ordering (fewer taps/thought = lower burden), not measured.
-- The 12-question starter bank covers only what `LifeCalculatorInput`
-  needs — no disability/CI/health/LTC questions exist yet. A user who
-  finishes this questionnaire and looks at the other four calculator
-  cards on `/` is still looking at fixture-driven numbers, not their own.
-- `factsToLifeCalculatorInput` only recognizes the exact fact keys
-  `STARTER_LIFE_QUESTIONS` produces — it's not a general-purpose Facts
-  interpreter that would tolerate a differently-named fact meaning the
-  same thing.
+- `income.survivor.reliableMonthly` and `expenses.household.monthly` each
+  answer for two different PRD concepts across categories (life vs.
+  disability/CI) rather than being asked twice — see docs/DECISIONS.md.
+  This means disability/CI's "essential expenses" is really "total
+  household spend" in this flow, which overstates rather than understates
+  those two calculators' need.
+- No question collects LTC's `expectedMonthlyCareCost` — every live LTC
+  result goes through `config.careAssumptions.assumedMonthlyLTCCareCost`
+  (already documented as an invented placeholder), same as the
+  fixture-driven page.
+- The live `/questionnaire` flow fixes CI's recovery duration at 6 months
+  and LTC's expected duration at 3 years — no UI lets a live user compare
+  scenarios the way the fixture page's expandable tables do.
+- Each `factsTo*Input` adapter only recognizes its own exact fact keys —
+  none of them are a general-purpose Facts interpreter that would
+  tolerate a differently-named fact meaning the same thing.
 
 ## Known dependency vulnerabilities (not remediated)
 

@@ -1,21 +1,31 @@
+import { ALL_HEALTH_COVERAGE_MODULES } from "@insurance-advisor/domain";
 import type { Question } from "./question.js";
 
 /**
- * Starter questionnaire — PRD §49, scoped to the Life Insurance
- * calculator only for this pass (not disability/CI/health/LTC yet, which
- * the PRD's Third Prompt also asks for — see docs/DECISIONS.md for why
- * this is split into a smaller, real, working slice instead of a wider
- * but shallower one).
+ * Starter questionnaire — PRD §49. ONE unified question bank across all
+ * five calculators (life, disability, critical illness, LTC, health
+ * modules), not five separate silos — matching the PRD's own design
+ * (§7/§10: one adaptive questionnaire produces Facts that every
+ * calculator draws from). A household answers "how many dependents do
+ * you have" once, not five times.
  *
- * Fact keys follow the dotted convention from PRD §8's own examples
- * (`person.age`, `household.dependents.count`, ...) — this is the
- * canonical Facts layer naming, distinct from `LifeCalculatorInput`'s
- * field names. `packages/calculators/src/facts-to-life-input.ts` bridges
- * the two — the real Facts→calculator-input adapter this questionnaire
- * makes possible, replacing the `fromHouseholdFixture` demo adapter for
- * anyone going through this flow instead of a hardcoded fixture.
+ * Fact keys follow the dotted convention from PRD §8's own examples —
+ * the canonical Facts layer naming, distinct from any one calculator's
+ * input field names. `packages/calculators/src/facts-to-*-input.ts`
+ * bridge Facts → each calculator's input shape (see docs/DECISIONS.md).
+ *
+ * A few PRD concepts are deliberately conflated onto one fact here rather
+ * than asked twice — see docs/ASSUMPTIONS.md:
+ * - "survivor reliable income" (life, §12.3) and "reliable income during
+ *   disability" (§13.1) share `income.survivor.reliableMonthly` — in
+ *   practice usually the same figure (a spouse's own continuing salary).
+ * - "household required annual spend" (life) and "essential monthly
+ *   expenses" (disability/CI) share `expenses.household.monthly` — the
+ *   PRD's own §13.1 formula subsets to "essential" while life's §12.3
+ *   uses total spend; asking one number and using it for both slightly
+ *   overstates the disability/CI need rather than understating it.
  */
-export const STARTER_LIFE_QUESTIONS: Question[] = [
+export const STARTER_QUESTIONS: Question[] = [
   {
     id: "household_marital_status",
     version: 1,
@@ -51,6 +61,29 @@ export const STARTER_LIFE_QUESTIONS: Question[] = [
     decisionImpact: 0.8,
   },
   {
+    id: "person_current_age",
+    version: 1,
+    category: "personal",
+    text: "מה הגיל שלך?",
+    answerType: "number",
+    required: true,
+    validation: [{ kind: "range", params: { min: 18, max: 100 }, severity: "warning", message: "גיל חריג — נכון?" }],
+    factsProduced: ["person.currentAge"],
+    decisionImpact: 0.4,
+  },
+  {
+    id: "person_retirement_age",
+    version: 1,
+    category: "personal",
+    text: "באיזה גיל אתה מתכנן לפרוש?",
+    helpText: "לרוב 67 — אפשר להשאיר ריק ולתת למערכת להניח ברירת מחדל.",
+    answerType: "number",
+    required: false,
+    validation: [{ kind: "range", params: { min: 50, max: 80 }, severity: "warning", message: "גיל פרישה חריג — נכון?" }],
+    factsProduced: ["person.retirementAge"],
+    decisionImpact: 0.3,
+  },
+  {
     id: "expenses_household_monthly",
     version: 1,
     category: "expenses",
@@ -67,7 +100,7 @@ export const STARTER_LIFE_QUESTIONS: Question[] = [
     id: "income_survivor_reliable_monthly",
     version: 1,
     category: "income",
-    text: "כמה הכנסה חודשית אמינה תישאר למשפחה במקרה פטירה שלך? (למשל הכנסת בן/בת הזוג)",
+    text: "כמה הכנסה חודשית אמינה תישאר למשפחה במקרה פטירה או אבדן כושר עבודה שלך? (למשל הכנסת בן/בת הזוג)",
     answerType: "money",
     required: true,
     normalizer: "roundMoneyToShekel",
@@ -97,6 +130,18 @@ export const STARTER_LIFE_QUESTIONS: Question[] = [
     normalizer: "roundMoneyToShekel",
     factsProduced: ["debt.mortgage.balance"],
     decisionImpact: 0.7,
+  },
+  {
+    id: "debt_mortgage_monthly_payment",
+    version: 1,
+    category: "debts",
+    text: "מה התשלום החודשי על המשכנתה?",
+    answerType: "money",
+    required: false,
+    showWhen: { questionId: "debt_mortgage_exists", operator: "==", value: true },
+    normalizer: "roundMoneyToShekel",
+    factsProduced: ["debt.mortgage.monthlyPayment"],
+    decisionImpact: 0.5,
   },
   {
     id: "debt_mortgage_has_lender_insurance",
@@ -134,6 +179,40 @@ export const STARTER_LIFE_QUESTIONS: Question[] = [
     decisionImpact: 0.6,
   },
   {
+    id: "coverage_disability_existing_monthly",
+    version: 1,
+    category: "existing_coverage",
+    text: "מה סכום הכיסוי החודשי הקיים שלך לאבדן כושר עבודה (נטו, אם ידוע)?",
+    helpText: "כולל ביטוח דרך הפנסיה, ביטוח פרטי, וכיסוי מעסיק יחד.",
+    answerType: "money",
+    required: true,
+    normalizer: "roundMoneyToShekel",
+    factsProduced: ["coverage.disability.existingNetMonthly"],
+    decisionImpact: 0.6,
+  },
+  {
+    id: "coverage_critical_illness_existing_amount",
+    version: 1,
+    category: "existing_coverage",
+    text: "מה סכום ביטוח מחלות קשות הקיים שלך?",
+    answerType: "money",
+    required: true,
+    normalizer: "roundMoneyToShekel",
+    factsProduced: ["coverage.criticalIllness.existingAmount"],
+    decisionImpact: 0.5,
+  },
+  {
+    id: "coverage_ltc_existing_monthly_benefit",
+    version: 1,
+    category: "existing_coverage",
+    text: "האם יש לך ביטוח סיעודי קיים? אם כן, מה גובה הקצבה החודשית?",
+    answerType: "money",
+    required: false,
+    normalizer: "roundMoneyToShekel",
+    factsProduced: ["coverage.ltc.existingMonthlyBenefit"],
+    decisionImpact: 0.3,
+  },
+  {
     id: "assets_earmarked_liquid",
     version: 1,
     category: "assets",
@@ -143,6 +222,17 @@ export const STARTER_LIFE_QUESTIONS: Question[] = [
     normalizer: "roundMoneyToShekel",
     factsProduced: ["assets.earmarkedLiquid"],
     decisionImpact: 0.5,
+  },
+  {
+    id: "assets_monthly_self_funding_capacity",
+    version: 1,
+    category: "assets",
+    text: "כמה יכולה המשפחה לממן מדי חודש באופן עצמאי לצורך סיעודי, אם יידרש?",
+    answerType: "money",
+    required: false,
+    normalizer: "roundMoneyToShekel",
+    factsProduced: ["assets.monthlySelfFundingCapacity"],
+    decisionImpact: 0.3,
   },
   {
     id: "goals_education_amount",
@@ -167,4 +257,18 @@ export const STARTER_LIFE_QUESTIONS: Question[] = [
     factsProduced: ["person.protectionHorizonOverrideYears"],
     decisionImpact: 0.1,
   },
+  // One single_select question per PRD §15 health module, generated rather
+  // than hand-duplicated 7 times. Answer values are "yes" | "no" | "unknown".
+  ...ALL_HEALTH_COVERAGE_MODULES.map(
+    (module): Question => ({
+      id: `health_module_${module}`,
+      version: 1,
+      category: "health",
+      text: `האם יש לך כיסוי ביטוחי פרטי עבור: ${module}?`,
+      answerType: "single_select",
+      required: false,
+      factsProduced: [`health.module.${module}`],
+      decisionImpact: 0.2,
+    }),
+  ),
 ];

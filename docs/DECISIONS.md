@@ -2,6 +2,43 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Questionnaire extended to all five calculators (unified bank)
+
+1. **One unified `STARTER_QUESTIONS` bank replaces the life-only one** —
+   `household_dependents_count` is asked once and its Fact feeds life,
+   disability, and CI's priority scoring alike, matching the PRD's actual
+   design (§7/§10: one questionnaire, many calculators), not the
+   per-category silos the previous pass's scoping note said would be
+   "mechanical repetition" to add — this is that repetition, done.
+2. **Two PRD concepts are still deliberately conflated onto shared facts**
+   (documented in the file's own header and docs/ASSUMPTIONS.md):
+   `income.survivor.reliableMonthly` answers both "survivor income" (life)
+   and "income during disability" (disability/CI), and
+   `expenses.household.monthly` answers both "total household spend"
+   (life) and "essential expenses" (disability/CI). Splitting these into
+   truly separate questions is possible later without any architecture
+   change — it's two more questions, not a redesign.
+3. **The 7 health-module questions are generated from
+   `ALL_HEALTH_COVERAGE_MODULES`** (a `.map()`, not 7 hand-written
+   near-duplicate objects) — added `packages/domain` as a dependency of
+   `packages/questionnaire` for this (checked: acyclic, domain doesn't
+   depend on questionnaire).
+4. **`packages/calculators` gained four more real Facts adapters**
+   (`facts-to-disability-input.ts`, `facts-to-critical-illness-input.ts`,
+   `facts-to-ltc-input.ts`, `facts-to-health-input.ts`), all following the
+   exact pattern `facts-to-life-input.ts` established.
+5. **`/questionnaire` now renders all five calculator cards** (reusing
+   `ResultCard` and the newly-extracted `HealthModuleCard`, moved to
+   `app/components/health-module-card.tsx` for the same sharing reason
+   `ResultCard` was extracted) from one flowing conversation, computed
+   live — the same shape as `/`'s fixture-driven view, but from real
+   answers.
+6. **CI and LTC use fixed scenario parameters (6 months, 3 years)** in
+   this live flow rather than letting the user pick — the scenario
+   *comparison* UI (multiple durations side by side) only exists on the
+   fixture-driven `/` page for now; adding a duration picker to the live
+   flow is a UI task, not an engine gap.
+
 ## 2026-09-08 — Adaptive Questionnaire engine + real interactive flow — Milestone 2 (scoped to Life)
 
 1. **§7.2's four-factor `questionScore` formula was simplified to two

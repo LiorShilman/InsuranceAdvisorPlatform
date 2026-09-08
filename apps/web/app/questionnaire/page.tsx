@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { Fact } from "@insurance-advisor/shared";
+import { Money, type Fact } from "@insurance-advisor/shared";
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import {
-  STARTER_LIFE_QUESTIONS,
+  STARTER_QUESTIONS,
   getNextQuestion,
   completionScore,
   validateAnswer,
@@ -15,21 +15,29 @@ import {
 } from "@insurance-advisor/questionnaire";
 import {
   LifeInsuranceCalculator,
+  DisabilityInsuranceCalculator,
+  CriticalIllnessCalculator,
+  LongTermCareCalculator,
+  HealthModuleAssessor,
   PriorityEngine,
   RecommendationBuilder,
   ReviewScheduler,
   factsToLifeCalculatorInput,
+  factsToDisabilityCalculatorInput,
+  factsToCriticalIllnessInput,
+  factsToLongTermCareInput,
+  factsToHealthInput,
 } from "@insurance-advisor/calculators";
 import { ResultCard, formatExact } from "../components/result-card";
+import { HealthModuleCard } from "../components/health-module-card";
 
 /**
- * A REAL interactive flow — no hardcoded fixtures. Answers go through the
- * same `getNextQuestion`/`validateAnswer`/`produceFacts` engine as any
- * future full UI would, and the recommendation at the end is computed
- * live from what you typed via `factsToLifeCalculatorInput`, the actual
- * Facts→calculator adapter (not the `fromHouseholdFixture` demo one the
- * main preview page uses). Scoped to Life Insurance only — see
- * docs/DECISIONS.md.
+ * A REAL interactive flow across all five calculators — no hardcoded
+ * fixtures. Answers go through the same `getNextQuestion`/
+ * `validateAnswer`/`produceFacts` engine as any future full UI would, and
+ * every card below is computed live from what you typed, via the real
+ * Facts→calculator adapters (not the `fromHouseholdFixture*` demo ones
+ * the main `/` page uses).
  */
 
 const SINGLE_SELECT_OPTIONS: Record<string, Array<{ value: string; label: string }>> = {
@@ -42,7 +50,22 @@ const SINGLE_SELECT_OPTIONS: Record<string, Array<{ value: string; label: string
   ],
 };
 
+const HEALTH_MODULE_TRISTATE_OPTIONS = [
+  { value: "yes", label: "יש לי" },
+  { value: "no", label: "אין לי" },
+  { value: "unknown", label: "לא יודע/ת" },
+];
+
+function optionsFor(question: Question): Array<{ value: string; label: string }> {
+  if (question.id.startsWith("health_module_")) return HEALTH_MODULE_TRISTATE_OPTIONS;
+  return SINGLE_SELECT_OPTIONS[question.id] ?? [];
+}
+
 const lifeCalculator = new LifeInsuranceCalculator();
+const disabilityCalculator = new DisabilityInsuranceCalculator();
+const criticalIllnessCalculator = new CriticalIllnessCalculator();
+const longTermCareCalculator = new LongTermCareCalculator();
+const healthModuleAssessor = new HealthModuleAssessor();
 const priorityEngine = new PriorityEngine();
 const recommendationBuilder = new RecommendationBuilder();
 const reviewScheduler = new ReviewScheduler();
@@ -72,6 +95,8 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
     setIssues([]);
   }
 
+  const options = optionsFor(question);
+
   return (
     <section className="card">
       <div style={{ background: "var(--border)", height: 6, borderRadius: 3, marginBottom: 16, overflow: "hidden" }}>
@@ -92,7 +117,7 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
         </div>
       ) : question.answerType === "single_select" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {(SINGLE_SELECT_OPTIONS[question.id] ?? []).map((opt) => (
+          {options.map((opt) => (
             <button
               key={opt.value}
               className="badge"
@@ -102,13 +127,17 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
               {opt.label}
             </button>
           ))}
+          {question.id.startsWith("health_module_") && (
+            <button className="badge" style={{ cursor: "pointer", alignSelf: "flex-start" }} onClick={() => onAnswer(undefined)}>
+              דלג
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: "flex", gap: 8 }}>
           <input
             type={question.answerType === "date" ? "date" : "text"}
             inputMode={question.answerType === "number" || question.answerType === "money" ? "decimal" : undefined}
-            className="form-input"
             style={{ flex: 1, padding: 10, fontSize: "1rem", borderRadius: 8, border: "1px solid var(--border)" }}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -130,7 +159,7 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
       )}
 
       {issues.map((issue, i) => (
-        <p key={i} className={issue.severity === "error" ? "missing" : "missing"} style={{ color: issue.severity === "error" ? "var(--gap)" : "var(--muted)" }}>
+        <p key={i} className="missing" style={{ color: issue.severity === "error" ? "var(--gap)" : "var(--muted)" }}>
           {issue.message}
         </p>
       ))}
@@ -141,14 +170,14 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
 export default function QuestionnairePage() {
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
 
-  const next = useMemo(() => getNextQuestion(STARTER_LIFE_QUESTIONS, answers), [answers]);
-  const progress = useMemo(() => completionScore(STARTER_LIFE_QUESTIONS, answers), [answers]);
+  const next = useMemo(() => getNextQuestion(STARTER_QUESTIONS, answers), [answers]);
+  const progress = useMemo(() => completionScore(STARTER_QUESTIONS, answers), [answers]);
 
   const facts: Fact[] = useMemo(
     () =>
       Object.entries(answers).flatMap(([questionId, value]) => {
         if (value === undefined) return [];
-        const question = STARTER_LIFE_QUESTIONS.find((q) => q.id === questionId);
+        const question = STARTER_QUESTIONS.find((q) => q.id === questionId);
         return question ? produceFacts(question, value) : [];
       }),
     [answers],
@@ -156,11 +185,11 @@ export default function QuestionnairePage() {
 
   return (
     <main>
-      <h1>שאלון אינטראקטיבי — ביטוח חיים</h1>
+      <h1>שאלון אינטראקטיבי — כל צרכי הביטוח</h1>
       <p className="subtitle">
-        Milestone 2 (PRD §7, §49) · שאלה הבאה נבחרת דינמית לפי decisionImpact ורלוונטיות (showWhen), לא רשימה קבועה.
-        התשובות הופכות ל-Facts (§8) שעוברות דרך <code>factsToLifeCalculatorInput</code> — מתאם ה-Facts האמיתי, לא
-        פיקסצ׳ר קשיח.
+        Milestone 2 (PRD §7, §49) · שאלון אחד מאוחד לכל חמשת המחשבונים — לא חמישה שאלונים נפרדים. השאלה הבאה נבחרת
+        דינמית לפי decisionImpact ורלוונטיות (showWhen). התשובות הופכות ל-Facts (§8) שעוברות דרך מתאמי ה-Facts
+        האמיתיים, לא פיקסצ׳ר קשיח.
       </p>
       <p>
         <Link href="/" style={{ color: "var(--accent)" }}>
@@ -181,69 +210,207 @@ export default function QuestionnairePage() {
           onAnswer={(value) => setAnswers((prev) => ({ ...prev, [next.id]: value }))}
         />
       ) : (
-        <LiveRecommendation facts={facts} onRestart={() => setAnswers({})} />
+        <LiveRecommendations facts={facts} onRestart={() => setAnswers({})} />
       )}
     </main>
   );
 }
 
-function LiveRecommendation(props: { facts: Fact[]; onRestart: () => void }) {
+function LiveRecommendations(props: { facts: Fact[]; onRestart: () => void }) {
   const { facts, onRestart } = props;
   const NOW = new Date();
 
-  const input = factsToLifeCalculatorInput(facts);
-  const { result, trace } = lifeCalculator.calculate(input, STARTER_ENGINE_CONFIG);
+  const lifeInput = factsToLifeCalculatorInput(facts);
+  const life = lifeCalculator.calculate(lifeInput, STARTER_ENGINE_CONFIG);
+  const hasDependents = lifeInput.dependentCount > 0;
 
-  const priority = priorityEngine.score(
+  const disabilityInput = factsToDisabilityCalculatorInput(facts);
+  const disability = disabilityCalculator.calculate(disabilityInput, STARTER_ENGINE_CONFIG);
+
+  const ciInput = factsToCriticalIllnessInput(facts);
+  const ci = criticalIllnessCalculator.calculate({ ...ciInput, recoveryDurationMonths: 6 }, STARTER_ENGINE_CONFIG);
+
+  const ltcInput = factsToLongTermCareInput(facts);
+  const ltc = longTermCareCalculator.calculate({ ...ltcInput, expectedDurationYears: 3 }, STARTER_ENGINE_CONFIG);
+
+  const health = healthModuleAssessor.assess(factsToHealthInput(facts), STARTER_ENGINE_CONFIG);
+
+  const lifePriority = priorityEngine.score(
+    { category: "life", ...PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber()), hasDependents },
+    STARTER_ENGINE_CONFIG,
+  );
+  const disabilityPriority = priorityEngine.score(
     {
-      category: "life",
-      ...PriorityEngine.gapRatioAndCoverageAdequacy(result.grossNeed.toNumber(), result.availableResources.toNumber()),
-      hasDependents: input.dependentCount > 0,
+      category: "disability",
+      ...PriorityEngine.gapRatioAndCoverageAdequacy(disability.result.requiredMonthlyIncome.toNumber(), disability.result.existingNetExpectedDisabilityIncome.toNumber()),
+      hasDependents,
     },
     STARTER_ENGINE_CONFIG,
   );
+  const ciPriority = priorityEngine.score(
+    { category: "critical_illness", ...PriorityEngine.gapRatioAndCoverageAdequacy(ci.result.need.toNumber(), ci.result.existingCoverage.toNumber()), hasDependents },
+    STARTER_ENGINE_CONFIG,
+  );
+  const ltcPriority = priorityEngine.score(
+    { category: "ltc", ...PriorityEngine.gapRatioAndCoverageAdequacy(ltc.result.capitalNeed.toNumber(), 0), hasDependents },
+    STARTER_ENGINE_CONFIG,
+  );
 
-  const recommendation = recommendationBuilder.build(
+  const lifeRecommendation = recommendationBuilder.build(
     {
       clientProfileId: "live-questionnaire-session",
       category: "life",
       title: "ביטוח חיים",
-      needAmount: result.grossNeed,
-      existingAmount: result.availableResources,
-      gapAmount: result.gap,
-      horizon: { type: "years", value: result.horizonYears },
-      reasonCodes: result.reasonCodes,
-      reviewTriggers: result.reviewTriggers,
-      missingFacts: result.missingFacts,
-      assumptions: result.assumptions,
-      confidence: result.confidence,
-      calculationTraceId: trace.id,
-      priority,
+      needAmount: life.result.grossNeed,
+      existingAmount: life.result.availableResources,
+      gapAmount: life.result.gap,
+      horizon: { type: "years", value: life.result.horizonYears },
+      reasonCodes: life.result.reasonCodes,
+      reviewTriggers: life.result.reviewTriggers,
+      missingFacts: life.result.missingFacts,
+      assumptions: life.result.assumptions,
+      confidence: life.result.confidence,
+      calculationTraceId: life.trace.id,
+      priority: lifePriority,
+    },
+    STARTER_ENGINE_CONFIG,
+  );
+  const disabilityRecommendation = recommendationBuilder.build(
+    {
+      clientProfileId: "live-questionnaire-session",
+      category: "disability",
+      title: "ביטוח אבדן כושר עבודה",
+      needAmount: disability.result.requiredMonthlyIncome,
+      existingAmount: disability.result.existingNetExpectedDisabilityIncome,
+      gapAmount: disability.result.monthlyGap,
+      monthlyBenefitTarget: disability.result.monthlyGap,
+      horizon: disability.result.recommendedDurationYears !== undefined ? { type: "years", value: disability.result.recommendedDurationYears } : undefined,
+      reasonCodes: disability.result.reasonCodes,
+      reviewTriggers: disability.result.reviewTriggers,
+      missingFacts: disability.result.missingFacts,
+      assumptions: disability.result.assumptions,
+      confidence: disability.result.confidence,
+      calculationTraceId: disability.trace.id,
+      priority: disabilityPriority,
+    },
+    STARTER_ENGINE_CONFIG,
+  );
+  const ciRecommendation = recommendationBuilder.build(
+    {
+      clientProfileId: "live-questionnaire-session",
+      category: "critical_illness",
+      title: "ביטוח מחלות קשות",
+      needAmount: ci.result.need,
+      existingAmount: ci.result.existingCoverage,
+      gapAmount: ci.result.gap,
+      reasonCodes: ci.result.reasonCodes,
+      reviewTriggers: ci.result.reviewTriggers,
+      missingFacts: ci.result.missingFacts,
+      assumptions: ci.result.assumptions,
+      confidence: ci.result.confidence,
+      calculationTraceId: ci.trace.id,
+      priority: ciPriority,
+    },
+    STARTER_ENGINE_CONFIG,
+  );
+  const ltcRecommendation = recommendationBuilder.build(
+    {
+      clientProfileId: "live-questionnaire-session",
+      category: "ltc",
+      title: "ביטוח סיעודי",
+      needAmount: ltc.result.capitalNeed,
+      existingAmount: Money.zero(),
+      gapAmount: ltc.result.capitalNeed,
+      horizon: { type: "years", value: 3 },
+      reasonCodes: ltc.result.reasonCodes,
+      reviewTriggers: ltc.result.reviewTriggers,
+      missingFacts: ltc.result.missingFacts,
+      assumptions: ltc.result.assumptions,
+      confidence: ltc.result.confidence,
+      calculationTraceId: ltc.trace.id,
+      priority: ltcPriority,
     },
     STARTER_ENGINE_CONFIG,
   );
 
   return (
     <>
-      <p style={{ fontWeight: 600 }}>סיימת! זו ההמלצה המחושבת מהתשובות שלך, ממש עכשיו:</p>
+      <p style={{ fontWeight: 600 }}>סיימת! אלו ההמלצות המחושבות מהתשובות שלך, ממש עכשיו, על פני כל חמשת הביטוחים:</p>
+
       <ResultCard
         title="ביטוח חיים"
-        badges={[`טווח הגנה: ${result.horizonYears} שנים`]}
-        confidence={result.confidence}
-        priority={priority}
-        status={recommendation.status}
-        rationale={recommendation.rationale}
-        nextReviewDate={reviewScheduler.nextReviewDate(recommendation, NOW)}
-        reasonCodes={result.reasonCodes}
+        badges={[`טווח הגנה: ${life.result.horizonYears} שנים`]}
+        confidence={life.result.confidence}
+        priority={lifePriority}
+        status={lifeRecommendation.status}
+        rationale={lifeRecommendation.rationale}
+        nextReviewDate={reviewScheduler.nextReviewDate(lifeRecommendation, NOW)}
+        reasonCodes={life.result.reasonCodes}
         figures={[
-          { label: "צורך חישובי (ברוטו)", amountExact: result.grossNeed.toExactString() },
-          { label: "כיסוי ומשאבים קיימים", amountExact: result.availableResources.toExactString() },
-          { label: "פער מומלץ לכיסוי", amountExact: result.gap.toExactString(), emphasize: true },
+          { label: "צורך חישובי (ברוטו)", amountExact: life.result.grossNeed.toExactString() },
+          { label: "כיסוי ומשאבים קיימים", amountExact: life.result.availableResources.toExactString() },
+          { label: "פער מומלץ לכיסוי", amountExact: life.result.gap.toExactString(), emphasize: true },
         ]}
-        note={`טווח מוצע: ${formatExact(result.recommendedRange.min.toExactString())} – ${formatExact(result.recommendedRange.max.toExactString())}`}
-        missingFacts={result.missingFacts}
-        trace={trace}
+        note={`טווח מוצע: ${formatExact(life.result.recommendedRange.min.toExactString())} – ${formatExact(life.result.recommendedRange.max.toExactString())}`}
+        missingFacts={life.result.missingFacts}
+        trace={life.trace}
       />
+
+      <ResultCard
+        title="ביטוח אבדן כושר עבודה"
+        badges={[disability.result.recommendedDurationYears !== undefined ? `משך מומלץ: ${disability.result.recommendedDurationYears} שנים` : "משך מומלץ: לא ידוע"]}
+        confidence={disability.result.confidence}
+        priority={disabilityPriority}
+        status={disabilityRecommendation.status}
+        rationale={disabilityRecommendation.rationale}
+        nextReviewDate={reviewScheduler.nextReviewDate(disabilityRecommendation, NOW)}
+        reasonCodes={disability.result.reasonCodes}
+        figures={[
+          { label: "הכנסה חודשית נדרשת", amountExact: disability.result.requiredMonthlyIncome.toExactString() },
+          { label: "כיסוי קיים (נטו, חודשי)", amountExact: disability.result.existingNetExpectedDisabilityIncome.toExactString() },
+          { label: "פער חודשי מומלץ", amountExact: disability.result.monthlyGap.toExactString(), emphasize: true },
+        ]}
+        missingFacts={disability.result.missingFacts}
+        trace={disability.trace}
+      />
+
+      <ResultCard
+        title="ביטוח מחלות קשות"
+        badges={["תרחיש מוצג: התאוששות 6 חודשים"]}
+        confidence={ci.result.confidence}
+        priority={ciPriority}
+        status={ciRecommendation.status}
+        rationale={ciRecommendation.rationale}
+        nextReviewDate={reviewScheduler.nextReviewDate(ciRecommendation, NOW)}
+        reasonCodes={ci.result.reasonCodes}
+        figures={[
+          { label: "צורך חד-פעמי (ברוטו)", amountExact: ci.result.need.toExactString() },
+          { label: "כיסוי קיים", amountExact: ci.result.existingCoverage.toExactString() },
+          { label: "פער מומלץ", amountExact: ci.result.gap.toExactString(), emphasize: true },
+        ]}
+        missingFacts={ci.result.missingFacts}
+        trace={ci.trace}
+      />
+
+      <HealthModuleCard assessments={health} />
+
+      <ResultCard
+        title="ביטוח סיעודי"
+        badges={["תרחיש מוצג: תוחלת 3 שנים"]}
+        confidence={ltc.result.confidence}
+        priority={ltcPriority}
+        status={ltcRecommendation.status}
+        rationale={ltcRecommendation.rationale}
+        nextReviewDate={reviewScheduler.nextReviewDate(ltcRecommendation, NOW)}
+        reasonCodes={ltc.result.reasonCodes}
+        figures={[
+          { label: "פער חודשי בעלות טיפול", amountExact: ltc.result.monthlyGap.toExactString() },
+          { label: "הון נדרש (מהוון)", amountExact: ltc.result.capitalNeed.toExactString(), emphasize: true },
+        ]}
+        missingFacts={ltc.result.missingFacts}
+        trace={ltc.trace}
+      />
+
       <button className="badge" style={{ cursor: "pointer", padding: "8px 20px" }} onClick={onRestart}>
         התחל שאלון מחדש
       </button>
