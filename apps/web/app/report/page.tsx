@@ -8,6 +8,7 @@ import { STARTER_QUESTIONS } from "@insurance-advisor/questionnaire";
 import { ResultCard, CATEGORY_ICONS, formatExact, PRIORITY_BAND_LABELS } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations, type ComputedRecommendations } from "../../lib/compute-recommendations";
+import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup";
 
 /**
  * The PRD §39 report structure, built from the SAME persisted Facts the
@@ -42,6 +43,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export default function ReportPage() {
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [facts, setFacts] = useState<Fact[] | null>(null);
+  const [coverages, setCoverages] = useState<ApiCoverage[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,10 +53,15 @@ export default function ReportPage() {
       if (cancelled) return;
       setClientProfileId(id);
 
-      const factsRes = await fetch(`/api/facts?clientProfileId=${id}`);
+      const [factsRes, coveragesRes] = await Promise.all([
+        fetch(`/api/facts?clientProfileId=${id}`),
+        fetch(`/api/coverages?clientProfileId=${id}`),
+      ]);
       const { facts: savedFacts } = (await factsRes.json()) as { facts: Fact[] };
+      const { coverages: savedCoverages } = (await coveragesRes.json()) as { coverages: ApiCoverage[] };
       if (cancelled) return;
       setFacts(savedFacts);
+      setCoverages(savedCoverages);
     })();
     return () => {
       cancelled = true;
@@ -66,13 +73,15 @@ export default function ReportPage() {
     return computeAllRecommendations(facts, clientProfileId, new Date());
   }, [facts, clientProfileId]);
 
-  if (!facts || !computed) {
+  if (!facts || !computed || !coverages) {
     return (
       <main>
         <p>טוען דוח...</p>
       </main>
     );
   }
+
+  const dedup = computeDeduplication(coverages);
 
   const categories = [
     { key: "life", ...computed.life },
@@ -342,11 +351,23 @@ export default function ReportPage() {
       {/* 11. Possible overlaps */}
       <section className="card">
         <h2>11. חפיפות אפשריות</h2>
-        <p style={{ color: "var(--muted)" }}>
-          בדיקת כפילויות (§18) מחייבת רשימה מובנית של פוליסות קיימות (ספק, תאריכים, סוג הטבה) — השאלון החי אוסף
-          כרגע רק סכום כיסוי מצרפי לכל קטגוריה, לא רשימת פוליסות. הבדיקה קיימת ופועלת בתצוגה מבוססת הפרופילים
-          הקבועים (<Link href="/">/</Link>).
-        </p>
+        {coverages.length < 2 ? (
+          <p style={{ color: "var(--muted)" }}>
+            הוזנו {coverages.length} פוליסות קיימות — נדרשות לפחות 2 כדי לבדוק חפיפה ביניהן. הזן פוליסות בעמוד{" "}
+            <Link href="/coverages" style={{ color: "var(--brand)" }}>
+              פוליסות קיימות
+            </Link>
+            .
+          </p>
+        ) : dedup.flags.length === 0 ? (
+          <p style={{ color: "var(--muted)" }}>לא נמצאה חפיפה חשודה בין {coverages.length} הפוליסות שהוזנו.</p>
+        ) : (
+          dedup.flags.map((f) => (
+            <div key={`${f.coverageIdA}-${f.coverageIdB}`} className="missing" style={{ marginBottom: 6 }}>
+              {f.message} (ניקוד חפיפה: {f.duplicateScore})
+            </div>
+          ))
+        )}
       </section>
 
       {/* 12. Holding/review horizon */}

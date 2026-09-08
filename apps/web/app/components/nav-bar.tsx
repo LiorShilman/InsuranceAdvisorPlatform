@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "5 פרופילים", icon: "🗂️" },
   { href: "/questionnaire", label: "שאלון אישי", icon: "📝" },
+  { href: "/coverages", label: "פוליסות קיימות", icon: "📋" },
   { href: "/report", label: "דוח מלא", icon: "📄" },
 ];
 

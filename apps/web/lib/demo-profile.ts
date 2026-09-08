@@ -9,12 +9,14 @@ import { prisma } from "./prisma";
  */
 const DEMO_USER_EMAIL = "demo-user@local.insurance-advisor";
 
-export async function getOrCreateDemoClientProfile(): Promise<string> {
+export type DemoClientProfile = { clientProfileId: string; primaryPersonId: string };
+
+export async function getOrCreateDemoClientProfile(): Promise<DemoClientProfile> {
   const existingUser = await prisma.user.findUnique({ where: { email: DEMO_USER_EMAIL } });
 
   if (existingUser) {
     const existingProfile = await prisma.clientProfile.findFirst({ where: { userId: existingUser.id } });
-    if (existingProfile) return existingProfile.id;
+    if (existingProfile) return { clientProfileId: existingProfile.id, primaryPersonId: existingProfile.primaryPersonId };
   }
 
   const user = existingUser ?? (await prisma.user.create({ data: { email: DEMO_USER_EMAIL, role: "client" } }));
@@ -27,5 +29,5 @@ export async function getOrCreateDemoClientProfile(): Promise<string> {
   // Person.clientProfileId couldn't be known until the profile existed — backfill it now.
   await prisma.person.update({ where: { id: person.id }, data: { clientProfileId: profile.id } });
 
-  return profile.id;
+  return { clientProfileId: profile.id, primaryPersonId: person.id };
 }

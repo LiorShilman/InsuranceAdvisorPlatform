@@ -4,29 +4,36 @@ Implementation of `INSURANCE_ADVISOR_PRD_v1.0.md` (Insurance Needs Analysis
 Platform). This is a **separate project** from `ls-financial-advisor` — see
 `docs/DECISIONS.md` for why.
 
-**Status: Milestones 1, 3, 4, 5 done; Milestone 2 (questionnaire) and
-Milestone 6 (UI/persistence) started.** All five need calculators (life,
-disability, critical illness, health-by-module, LTC) are real and tested,
-along with the rule engine, deduplication engine, priority engine,
-budget/affordability layer, recommendation object, and review scheduler.
-A real adaptive questionnaire drives all five from one set of answers, and
-those answers now persist to a real PostgreSQL database (not just browser
-state). See `docs/DECISIONS.md` for the full, dated history of what was
-built and why, and `docs/ASSUMPTIONS.md` for every invented placeholder
-number that still needs real product/actuarial/legal review.
+**Status: Milestones 1, 3, 4, 5, 7 done; Milestone 2 (questionnaire) and
+Milestone 6 (UI/persistence) well underway.** All five need calculators
+(life, disability, critical illness, health-by-module, LTC) are real and
+tested, along with the rule engine, coverage-deduplication engine,
+priority engine, budget/affordability layer, recommendation object, and
+review scheduler. A real adaptive questionnaire drives all five from one
+set of answers, those answers persist to a real PostgreSQL database (not
+just browser state), existing policies can be entered and are actually
+checked for overlaps (not just on the 5 fixed demo personas), a 16-section
+report (§39) renders from that same real data with browser print-to-PDF
+export, and the UI has a real design-token system with genuine dark mode
+(not a light-only skin). See `docs/DECISIONS.md` for the full, dated
+history of what was built and why, and `docs/ASSUMPTIONS.md` for every
+invented placeholder number that still needs real product/actuarial/legal
+review.
 
 Still missing: authentication (there is exactly one hardcoded "demo"
-profile per database — see `apps/web/lib/demo-profile.ts`), the report/PDF
-export (§39), the LLM explanation layer (§29), the admin console (§51),
-and Product Matching/real pricing (§50, explicitly Phase 2).
+profile per database — see `apps/web/lib/demo-profile.ts`), the LLM
+explanation layer (§29), the admin console (§51), and Product
+Matching/real pricing (§50, explicitly Phase 2).
 
 ## Layout
 
 ```
-apps/web               Next.js app — two pages (fixture-driven preview at
-                        `/`, a real interactive questionnaire at
-                        `/questionnaire`) plus a small API
-                        (`app/api/profile`, `app/api/facts`) backed by
+apps/web               Next.js app — fixture-driven preview at `/`, a real
+                        interactive questionnaire at `/questionnaire`,
+                        existing-policy entry + duplicate check at
+                        `/coverages`, a full 16-section report at
+                        `/report`, plus a small API (`app/api/profile`,
+                        `app/api/facts`, `app/api/coverages`) backed by
                         Prisma/Postgres
 packages/shared         Money, CalculationTrace, Assumption, Fact (PRD §8, §25)
 packages/rules          Rule/NeedStatus types + a real SimpleRuleEngine (PRD §11)
@@ -62,9 +69,11 @@ persisted, interactive flow.
 
 ## Next steps
 
-- Widen the questionnaire's 19-question starter bank (still far short of
-  the PRD's illustrative "~70 questions", §7.1).
-- Report generation (§39) and the LLM explanation-only layer (§29).
+- Widen the questionnaire's ~20-question starter bank (still short of the
+  PRD's illustrative "~70 questions", §7.1) — only worth doing alongside
+  new calculator inputs that actually consume the answers, not as
+  unconsumed facts.
+- The LLM explanation-only layer (§29) — needs a provider/API-key decision.
 - Real authentication, replacing `lib/demo-profile.ts`'s single hardcoded
   profile.
 - Revisit the Next.js-Route-Handlers-as-API decision (docs/DECISIONS.md)

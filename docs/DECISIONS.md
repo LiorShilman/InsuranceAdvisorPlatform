@@ -2,6 +2,45 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-08 — Coverage-deduplication engine wired into the live flow (closes report §11)
+
+`CoverageDeduplicationEngine` (PRD §18) has existed and been tested since
+Milestone 4, but until now the `coverages` table only ever held
+`packages/test-fixtures` data — a real user could never actually trigger
+it, and `/report`'s §11 section said so explicitly instead of doing
+anything. This closes that gap:
+
+1. **New `/api/coverages` route** (GET/POST/DELETE), same pattern as
+   `/api/facts` — Prisma's `Decimal` amounts serialize as plain numbers
+   (not Decimal-strings) for the same reason `/api/facts` does that for
+   `confidence`.
+2. **New `apps/web/lib/compute-dedup.ts`** rehydrates the API's plain
+   numbers into real `Money` and calls the engine — shared by the new
+   `/coverages` page and `/report`'s §11 section, so both can never
+   disagree about what counts as a duplicate.
+3. **New `/coverages` page**: add/list/delete existing policies (category,
+   provider/subtype, beneficiary, lump-sum or monthly amount, optional
+   start/end dates), with a live duplicate-check panel underneath. Saved
+   as-entered with `verified: false, source: "user"` — a user typing in
+   their own policy details is self-reported/unverified data, same
+   default already used for every other user-entered value in this app.
+4. **`getOrCreateDemoClientProfile()` now also returns `primaryPersonId`**
+   (it always created one, just never exposed it) — needed as
+   `Coverage.insuredPersonId` since there's still no multi-person
+   household UI; every policy is attached to the one demo person. Revisit
+   once real multi-person households exist.
+5. **`/report`'s §11 section now shows real flags** (or "fewer than 2
+   policies entered yet, add them here →" or "no overlap found") instead
+   of a permanent "not available in the live flow" note.
+6. Verified end-to-end: created two overlapping life policies via the
+   live API against the running dev server, confirmed
+   `CoverageDeduplicationEngine` actually flags that exact pair
+   (duplicateScore 100, all four factors matched) via a temporary
+   scratch test using the identical data shape, then deleted both the
+   scratch test and the test policies. `tsc --noEmit`, `npm run lint`,
+   `npm test` (136/136), and a clean `next build` (dev server stopped +
+   `.next` cleared first) all pass.
+
 ## 2026-09-08 — Visual redesign pass: real design system + dark mode
 
 User feedback after Milestones 1-7 logic was complete: "עדיין התמקדנו
