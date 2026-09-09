@@ -1,4 +1,8 @@
 import type { CalculationTrace } from "@insurance-advisor/shared";
+import { formatExact } from "../../lib/format";
+import { WaterfallChart } from "./waterfall-chart";
+
+export { currencyFormatter, formatExact } from "../../lib/format";
 
 /**
  * Shared presentational card used by both the fixture-driven preview
@@ -46,16 +50,6 @@ export const STATUS_LABELS: Record<string, string> = {
   review_existing: "לבדוק כיסוי קיים",
   manual_review: "נדרשת בדיקה ידנית",
 };
-
-export const currencyFormatter = new Intl.NumberFormat("he-IL", {
-  style: "currency",
-  currency: "ILS",
-  maximumFractionDigits: 0,
-});
-
-export function formatExact(amountExact: string): string {
-  return currencyFormatter.format(Number(amountExact));
-}
 
 export type Figure = { label: string; amountExact: string; emphasize?: boolean };
 
@@ -143,6 +137,7 @@ export function ResultCard(props: {
 
       <details>
         <summary>איך חושב הפער? (Calculation trace)</summary>
+        {trace.lines.length > 0 && <WaterfallChart lines={trace.lines} totalLabel="פער סופי" totalExact={trace.resultExact} />}
         <table className="trace">
           <tbody>
             {trace.lines.map((line) => (

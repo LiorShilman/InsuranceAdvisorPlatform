@@ -27,6 +27,18 @@
   --danger-strong-bg: #f6d3cd;
   --danger-strong: #8a230f;
 
+  /* Waterfall-chart mark colors (dataviz skill) — distinct from --info/
+     --danger above: those are tuned for text/badge contrast, these for a
+     filled-bar mark's OKLCH lightness band. Validated with
+     scripts/validate_palette.js: light mode passes as-is reusing
+     --info/--danger's exact values; dark mode needed darker/more-saturated
+     variants since --info/--danger's dark values are too light for a bar
+     fill (fail the dark-mode L 0.48–0.67 band) — see docs/DECISIONS.md.
+     CVD ΔE 29.3 (light) / 23.0 (dark), both well above the 8 target. */
+  --chart-positive: #1d4ed8;
+  --chart-negative: #a3341c;
+  --chart-total: var(--text);
+
   --shadow-sm: 0 1px 2px rgba(23, 34, 48, 0.06);
   --shadow-md: 0 4px 16px rgba(23, 34, 48, 0.08);
   --radius-md: 12px;
@@ -64,6 +76,10 @@
     --danger-strong-bg: #4a2318;
     --danger-strong: #f0a68e;
 
+    --chart-positive: #4d79e0;
+    --chart-negative: #d9714f;
+    --chart-total: var(--text);
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
   }
@@ -93,6 +109,10 @@
   --danger-bg: #3a2018;
   --danger-strong-bg: #4a2318;
   --danger-strong: #f0a68e;
+
+  --chart-positive: #4d79e0;
+  --chart-negative: #d9714f;
+  --chart-total: var(--text);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);

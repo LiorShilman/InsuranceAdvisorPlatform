@@ -2,6 +2,61 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Waterfall explainability chart (PRD §24), second slice
+
+PRD §24 gives a literal worked example of a "clickable number" expanding
+into a waterfall breakdown (income replacement / mortgage / education /
+existing cover / earmarked assets → calculated gap). The `<details>`
+calculation-trace table already showed the exact same numbers as plain
+text rows; this renders the same data (not a separate computation) as an
+actual chart.
+
+1. **Loaded the `dataviz` skill first**, as its own trigger rules
+   require, before writing any chart code. Job = "above/below a
+   baseline; delta to target" → diverging bar (waterfall variant),
+   per its `choosing-a-form.md`.
+2. **Validated the color pair, didn't eyeball it** (`validate_palette.js`,
+   the skill's own non-negotiable): red/green (this app's existing
+   `--success`/`--danger`) fails CVD separation outright (ΔE 4.9
+   deutan) — the classic bad pair. Landed on blue/red-orange instead:
+   light mode reuses `--info`/`--danger`'s exact existing values (all
+   checks pass, ΔE 29.3); dark mode needed *new* values
+   (`--chart-positive: #4d79e0`, `--chart-negative: #d9714f`) since
+   `--info`/`--danger`'s dark values are tuned for text/badge contrast
+   and are too light for a filled bar mark — they fail the dark-mode
+   OKLCH lightness band (0.48–0.67) that a bar fill needs. New
+   `--chart-positive`/`--chart-negative`/`--chart-total` tokens in
+   globals.css, separate from the UI-badge tokens on purpose.
+3. **`trace.lines` already carries signed amounts** (every calculator
+   pushes offset lines via `.negate()`) — summing them always equals
+   `trace.resultExact` exactly, by construction. The chart is a direct
+   rendering of that running sum, not a parallel calculation that could
+   drift from the table.
+4. **Numbered bars, not rotated Hebrew labels on the x-axis** — a
+   pragmatic adaptation for a narrow RTL card: each bar gets a small
+   numeral, a matching numbered+color-swatched legend line underneath
+   carries the real label and signed amount. This also satisfies the
+   skill's "identity isn't color-alone" rule for a 2-color categorical
+   chart on top of each bar's native `<title>` tooltip.
+5. **New shared `apps/web/lib/format.ts`** — `formatExact` moved out of
+   `result-card.tsx` so `waterfall-chart.tsx` could use it without a
+   circular import (`result-card.tsx` → `waterfall-chart.tsx` →
+   `result-card.tsx`); `result-card.tsx` re-exports it so no existing
+   caller's import path needed to change.
+6. No hover-tooltip beyond the native `<title>`, and no interactive
+   legend widget — every value is already a direct label, and the
+   existing `<details>` table right below the chart is the full
+   accessible/table-view fallback the skill requires, not a separate
+   thing to build.
+7. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), a
+   clean `next build`. Live check surfaced something worth recording,
+   not a bug: `chart-positive` appeared in the compiled *client* JS for
+   `/questionnaire`/`/report`/`/coverages`/`/scenarios` but not for `/`
+   — because `/` (`app/page.tsx`) has no `"use client"` and renders as a
+   Server Component, so `ResultCard`'s code ships as HTML, never as
+   client JS. Confirmed by curling `/`'s raw HTML directly and finding
+   the real `<svg>` markup and `chart-positive` styles right there.
+
 ## 2026-09-10 — Scenario Simulator (PRD §23), first slice
 
 User asked for creative ideas to raise the product further, then said to
