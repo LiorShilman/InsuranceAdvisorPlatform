@@ -2,6 +2,54 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Scenario Simulator (PRD §23), first slice
+
+User asked for creative ideas to raise the product further, then said to
+build through the list one at a time. This is the first: PRD §23 names a
+"Scenario Simulator" explicitly (9 adjustable knobs, 4 side-by-side
+scenarios, "no scenario is locked") — unlike most other features in this
+project, the shape wasn't something I had to interpret from a vaguer PRD
+section, it's spelled out.
+
+1. **Honestly scoped to 2 of the 9 knobs**: lifestyle percentage (scales
+   `expenses.household.monthly`/`expenses.dependents.monthly`) and real
+   discount rate (`financialAssumptions.realDiscountRate` in
+   `EngineConfig`) — chosen because they're the two that affect every
+   Money-based calculator at once, not just one category. The other 7
+   (survivor income, dependent target age, mortgage payoff, education
+   reserve, emergency reserve, self-funding assets, budget) and the fully
+   interactive slider UI are a distinct, larger follow-up — not built
+   here. See docs/ASSUMPTIONS.md for the 4 presets' invented percentages.
+2. **`computeAllRecommendations` gained a 4th, defaulted parameter**
+   (`engineConfig = STARTER_ENGINE_CONFIG`) instead of hardcoding the
+   starter config internally — the only change needed to make the exact
+   same real pipeline (`/questionnaire`, `/report` already use it)
+   runnable under a different config, with zero duplicated wiring.
+3. **New `/scenarios` page**: a 4-column comparison table (life/
+   disability/critical-illness/LTC gap per scenario) plus a plain-language
+   description of what each preset actually changes, plus a missing-facts
+   footnote (a scenario can legitimately show 0 for every preset when a
+   calculator-gating fact — e.g. life's `youngestDependentAge`, which
+   drives `horizonYears` — was never answered; that's correct behavior on
+   an incomplete profile, not a simulator bug, so it's called out rather
+   than left looking broken).
+4. **De-duplicated 3 more label maps that had drifted into per-page
+   copies** while wiring this (`FACT_LABELS`, `RECOMMENDATION_CATEGORY_LABELS`
+   was already extracted last entry) — all now live in
+   `apps/web/lib/answer-labels.ts`, the single shared home for
+   Fact-key/value → Hebrew label lookups.
+5. Verified both ways: `tsc -b` + `apps/web`'s own `tsc --noEmit`,
+   `npm run lint`, `npm test` (145/145), a clean `next build`; and — since
+   the actual numeric behavior is the part that matters most here, not
+   just "it compiles" — a temporary scratch test that ran the real
+   calculators against the exact facts currently on the live demo profile
+   (fetched via curl) through all 4 presets, confirming disability's
+   `monthlyGap` orders correctly (lean < current < balanced <
+   conservative: 12,150 / 13,500 / 14,175 / 15,525) and that life
+   legitimately comes out 0 in every scenario for this particular
+   incomplete profile — exactly the case the missing-facts footnote
+   exists for. Scratch test deleted after.
+
 ## 2026-09-09 — Fixed English leaking into the (Hebrew) report
 
 User spotted it directly from a screenshot of their own report: "אם

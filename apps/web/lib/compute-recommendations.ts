@@ -1,5 +1,5 @@
 import { Money, type Fact } from "@insurance-advisor/shared";
-import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
+import { STARTER_ENGINE_CONFIG, type EngineConfig } from "@insurance-advisor/config";
 import type { Recommendation } from "@insurance-advisor/domain";
 import {
   LifeInsuranceCalculator,
@@ -54,32 +54,43 @@ export type ComputedRecommendations = {
   hasDependents: boolean;
 };
 
-export function computeAllRecommendations(facts: Fact[], clientProfileId: string, now: Date = new Date()): ComputedRecommendations {
+/**
+ * `engineConfig` defaults to the real starter config but can be overridden
+ * — used by the Scenario Simulator (§23, lib/scenario-simulator.ts) to
+ * recompute the exact same pipeline under a different discount rate
+ * without duplicating any of this wiring.
+ */
+export function computeAllRecommendations(
+  facts: Fact[],
+  clientProfileId: string,
+  now: Date = new Date(),
+  engineConfig: EngineConfig = STARTER_ENGINE_CONFIG,
+): ComputedRecommendations {
   const lifeInput = factsToLifeCalculatorInput(facts);
-  const life = lifeCalculator.calculate(lifeInput, STARTER_ENGINE_CONFIG);
+  const life = lifeCalculator.calculate(lifeInput, engineConfig);
   const hasDependents = lifeInput.dependentCount > 0;
 
   const disabilityInput = factsToDisabilityCalculatorInput(facts);
-  const disability = disabilityCalculator.calculate(disabilityInput, STARTER_ENGINE_CONFIG);
+  const disability = disabilityCalculator.calculate(disabilityInput, engineConfig);
 
   const ciInput = factsToCriticalIllnessInput(facts);
-  const ci = criticalIllnessCalculator.calculate({ ...ciInput, recoveryDurationMonths: 6 }, STARTER_ENGINE_CONFIG);
+  const ci = criticalIllnessCalculator.calculate({ ...ciInput, recoveryDurationMonths: 6 }, engineConfig);
 
   const ltcInput = factsToLongTermCareInput(facts);
-  const ltc = longTermCareCalculator.calculate({ ...ltcInput, expectedDurationYears: 3 }, STARTER_ENGINE_CONFIG);
+  const ltc = longTermCareCalculator.calculate({ ...ltcInput, expectedDurationYears: 3 }, engineConfig);
 
-  const health = healthModuleAssessor.assess(factsToHealthInput(facts), STARTER_ENGINE_CONFIG);
+  const health = healthModuleAssessor.assess(factsToHealthInput(facts), engineConfig);
 
   // Budget/Affordability (§20) — scoped to life's lump-sum gap only, per docs/DECISIONS.md.
   // Never shrinks the calculated need itself; only adds a second, budget-constrained option.
   const monthlyBudgetValue = facts.find((f) => f.key === "budget.monthlyProtectionBudget")?.value;
   const monthlyBudget = typeof monthlyBudgetValue === "number" ? Money.fromNumber(monthlyBudgetValue) : undefined;
-  const lifeAffordability = budgetAffordabilityEngine.evaluate({ calculatedNeed: life.result.gap, monthlyBudget }, STARTER_ENGINE_CONFIG);
+  const lifeAffordability = budgetAffordabilityEngine.evaluate({ calculatedNeed: life.result.gap, monthlyBudget }, engineConfig);
 
   const lifeGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(life.result.grossNeed.toNumber(), life.result.availableResources.toNumber());
   const lifePriority = priorityEngine.score(
     { category: "life", ...lifeGapFactors, hasDependents, affordabilityPenalty: lifeAffordability.affordabilityPenalty },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
   const disabilityGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(
     disability.result.requiredMonthlyIncome.toNumber(),
@@ -87,17 +98,17 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
   );
   const disabilityPriority = priorityEngine.score(
     { category: "disability", ...disabilityGapFactors, hasDependents },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
   const ciGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(ci.result.need.toNumber(), ci.result.existingCoverage.toNumber());
   const ciPriority = priorityEngine.score(
     { category: "critical_illness", ...ciGapFactors, hasDependents },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
   const ltcGapFactors = PriorityEngine.gapRatioAndCoverageAdequacy(ltc.result.capitalNeed.toNumber(), 0);
   const ltcPriority = priorityEngine.score(
     { category: "ltc", ...ltcGapFactors, hasDependents },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
 
   const lifeRecommendation = recommendationBuilder.build(
@@ -117,7 +128,7 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
       calculationTraceId: life.trace.id,
       priority: lifePriority,
     },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
   const disabilityRecommendation = recommendationBuilder.build(
     {
@@ -137,7 +148,7 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
       calculationTraceId: disability.trace.id,
       priority: disabilityPriority,
     },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
   const ciRecommendation = recommendationBuilder.build(
     {
@@ -155,7 +166,7 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
       calculationTraceId: ci.trace.id,
       priority: ciPriority,
     },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
   const ltcRecommendation = recommendationBuilder.build(
     {
@@ -174,7 +185,7 @@ export function computeAllRecommendations(facts: Fact[], clientProfileId: string
       calculationTraceId: ltc.trace.id,
       priority: ltcPriority,
     },
-    STARTER_ENGINE_CONFIG,
+    engineConfig,
   );
 
   return {

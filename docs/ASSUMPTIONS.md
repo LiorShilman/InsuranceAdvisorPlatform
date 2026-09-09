@@ -186,6 +186,24 @@ or explicitly accept each remaining advisory at that point.
   not built), so cards show category/need/gap/trace but no
   CRITICAL/HIGH/MEDIUM priority badge yet.
 
+## Scenario Simulator (`apps/web/lib/scenario-simulator.ts`, PRD §23)
+
+- PRD §23 lists 9 adjustable knobs and a fully-interactive slider UI; this
+  implements 2 of the 9 (lifestyle percentage, real discount rate) as 4
+  fixed presets rather than live sliders over all 9 — see the file's own
+  doc comment and docs/DECISIONS.md for why.
+- The 4 presets' actual numbers are entirely invented, unreviewed
+  placeholders, same status as every other constant in this file:
+  - Conservative: 115% lifestyle, discount rate −0.75pp.
+  - Balanced: 105% lifestyle, discount rate −0.25pp.
+  - Lean: 90% lifestyle, discount rate +0.75pp.
+  - (Current: 100% lifestyle, no discount-rate change — this one isn't
+    invented, it's just the user's real unmodified answers.)
+  No product/actuarial input decided what "conservative" or "lean"
+  concretely means in percentage terms — these are plausible-sounding
+  round numbers chosen to make the 4 scenarios visibly distinct, nothing
+  more.
+
 ## Regulatory
 
 - No disclaimer/compliance copy, license fields, or regulatory feature

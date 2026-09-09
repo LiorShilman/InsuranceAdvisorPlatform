@@ -4,12 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Fact } from "@insurance-advisor/shared";
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
-import { STARTER_QUESTIONS } from "@insurance-advisor/questionnaire";
 import { ResultCard, CATEGORY_ICONS, formatExact, PRIORITY_BAND_LABELS } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations, type ComputedRecommendations } from "../../lib/compute-recommendations";
 import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup";
-import { singleSelectLabelForFact } from "../../lib/answer-labels";
+import { singleSelectLabelForFact, RECOMMENDATION_CATEGORY_LABELS as CATEGORY_LABELS, FACT_LABELS } from "../../lib/answer-labels";
 
 /**
  * The PRD §39 report structure, built from the SAME persisted Facts the
@@ -24,10 +23,6 @@ import { singleSelectLabelForFact } from "../../lib/answer-labels";
  * dependency — good enough for a first report renderer.
  */
 
-const FACT_LABELS = new Map<string, string>(
-  STARTER_QUESTIONS.flatMap((q) => q.factsProduced.map((key): [string, string] => [key, q.text])),
-);
-
 /** `factKey` is optional only for the one call site (§13's missing-facts list) that passes a fact *key*, not a value — see its own translation below instead. */
 function formatFactValue(value: unknown, factKey?: string): string {
   if (typeof value === "number") return new Intl.NumberFormat("he-IL").format(value);
@@ -39,12 +34,6 @@ function formatFactValue(value: unknown, factKey?: string): string {
   return String(value);
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  life: "ביטוח חיים",
-  disability: "ביטוח אבדן כושר עבודה",
-  critical_illness: "ביטוח מחלות קשות",
-  ltc: "ביטוח סיעודי",
-};
 
 export default function ReportPage() {
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);

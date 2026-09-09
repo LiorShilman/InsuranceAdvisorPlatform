@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "5 פרופילים", icon: "🗂️" },
   { href: "/questionnaire", label: "שאלון אישי", icon: "📝" },
   { href: "/coverages", label: "פוליסות קיימות", icon: "📋" },
+  { href: "/scenarios", label: "סימולטור תרחישים", icon: "🎛️" },
   { href: "/report", label: "דוח מלא", icon: "📄" },
 ];
 

@@ -41,3 +41,14 @@ export function singleSelectLabelForFact(factKey: string, value: unknown): strin
   const option = optionsForQuestion(question).find((o) => o.value === value);
   return option?.label;
 }
+
+/** Fact key -> the Hebrew question text that produces it. Shared by /report and /scenarios (both show missing-facts lists by fact key). */
+export const FACT_LABELS = new Map<string, string>(STARTER_QUESTIONS.flatMap((q) => q.factsProduced.map((key): [string, string] => [key, q.text])));
+
+/** The 4 categories `ComputedRecommendations` actually produces (health is assessed separately, categorically — no single gap number). Shared by /report and /scenarios. */
+export const RECOMMENDATION_CATEGORY_LABELS: Record<string, string> = {
+  life: "ביטוח חיים",
+  disability: "ביטוח אבדן כושר עבודה",
+  critical_illness: "ביטוח מחלות קשות",
+  ltc: "ביטוח סיעודי",
+};
