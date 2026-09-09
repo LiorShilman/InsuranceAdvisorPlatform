@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Question } from "./question.js";
-import { getNextQuestion, completionScore } from "./question-selector.js";
+import { getNextQuestion, completionScore, resolveWizardStep } from "./question-selector.js";
 import { STARTER_QUESTIONS } from "./starter-questionnaire.js";
 
 describe("getNextQuestion (PRD §7.2)", () => {
@@ -97,5 +97,50 @@ describe("completionScore (PRD §9 applied to the questionnaire)", () => {
   it("4. optional (non-required) questions never lower the score", () => {
     const questions = [q("a"), q("b", { required: false })];
     expect(completionScore(questions, { a: 1 })).toBe(1);
+  });
+});
+
+describe("resolveWizardStep (back/forward navigation over getNextQuestion)", () => {
+  const q = (id: string, overrides: Partial<Question> = {}): Question => ({
+    id,
+    version: 1,
+    category: "personal",
+    text: id,
+    answerType: "number",
+    required: true,
+    factsProduced: [id],
+    decisionImpact: 0.5,
+    ...overrides,
+  });
+  const questions = [q("a", { decisionImpact: 0.9 }), q("b", { decisionImpact: 0.5 }), q("c", { decisionImpact: 0.1 })];
+
+  it("1. at the live edge (pointer === history.length) with no history, picks the same question getNextQuestion would", () => {
+    const step = resolveWizardStep(questions, {}, [], 0);
+    expect(step).toEqual({ kind: "next", question: questions[0] });
+  });
+
+  it("2. pointer behind history.length re-shows that exact question, not a re-derived pick", () => {
+    // "b" outranks "c", but the user is reviewing "c" specifically (pointer=1 into history=[a,c]) —
+    // must show "c" again, not jump to whatever currently scores highest.
+    const answers = { a: 1, c: 2 };
+    const step = resolveWizardStep(questions, answers, ["a", "c"], 1);
+    expect(step).toEqual({ kind: "reviewing", question: questions[2] });
+  });
+
+  it("3. pointer at history.length falls through to live selection among what's still unanswered", () => {
+    const answers = { a: 1 };
+    const step = resolveWizardStep(questions, answers, ["a"], 1);
+    expect(step).toEqual({ kind: "next", question: questions[1] }); // "b" — "a" is answered, "b" outranks "c"
+  });
+
+  it("4. nothing left anywhere -> done", () => {
+    const answers = { a: 1, b: 2, c: 3 };
+    const step = resolveWizardStep(questions, answers, ["a", "b", "c"], 3);
+    expect(step).toEqual({ kind: "done" });
+  });
+
+  it("5. a history id no longer present in the question bank falls through to live selection instead of getting stuck", () => {
+    const step = resolveWizardStep(questions, { a: 1 }, ["a", "stale-removed-question"], 1);
+    expect(step).toEqual({ kind: "next", question: questions[1] });
   });
 });

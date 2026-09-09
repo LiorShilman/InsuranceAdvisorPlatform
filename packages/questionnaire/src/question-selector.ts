@@ -68,3 +68,45 @@ export function completionScore(questions: Question[], answers: Record<string, u
   const answered = required.filter((q) => answers[q.id] !== undefined);
   return answered.length / required.length;
 }
+
+export type WizardStep =
+  /** Re-showing a question the user already answered, so they can go back and change it. */
+  | { kind: "reviewing"; question: Question }
+  /** A genuinely new question, freshly picked by getNextQuestion. */
+  | { kind: "next"; question: Question }
+  | { kind: "done" };
+
+/**
+ * Layers "go back and edit a previous answer" on top of `getNextQuestion`
+ * without changing its own adaptive-selection logic. `history` is the
+ * ordered list of question ids actually asked so far (append-only, growing
+ * only when a genuinely new question gets answered); `pointer` is a read
+ * head into it, 0..history.length.
+ *
+ * Deliberately does NOT re-derive "what comes next" via `getNextQuestion`
+ * while `pointer < history.length` — a question that scored highest once
+ * might not score highest again after other answers changed (e.g. a later
+ * answer added a new higher-decisionImpact relevant question), and picking
+ * a *different* question than the one the user is trying to revisit would
+ * make the "back" button feel broken. Only once the pointer reaches the
+ * live edge does adaptive selection resume.
+ */
+export function resolveWizardStep(
+  questions: Question[],
+  answers: Record<string, unknown>,
+  history: string[],
+  pointer: number,
+): WizardStep {
+  if (pointer < history.length) {
+    const id = history[pointer];
+    const question = questions.find((q) => q.id === id);
+    // Defensive: a question id from history that no longer exists in the bank
+    // (e.g. removed between question-bank versions) — fall through to live
+    // selection rather than getting stuck. Not expected in practice.
+    if (question) {
+      return { kind: "reviewing", question };
+    }
+  }
+  const next = getNextQuestion(questions, answers);
+  return next ? { kind: "next", question: next } : { kind: "done" };
+}

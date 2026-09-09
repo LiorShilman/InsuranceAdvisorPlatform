@@ -494,6 +494,13 @@ h2 {
   background: var(--brand-bg);
 }
 
+/* Marks the currently-answered choice when reviewing/editing a previous question. */
+.choice-card.selected {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  color: var(--brand-dark);
+}
+
 /* ---------- Details / trace tables ---------- */
 
 details {

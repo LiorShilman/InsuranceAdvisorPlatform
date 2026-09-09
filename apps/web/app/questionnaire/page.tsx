@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Fact } from "@insurance-advisor/shared";
 import {
   STARTER_QUESTIONS,
-  getNextQuestion,
+  resolveWizardStep,
   completionScore,
   validateAnswer,
   produceFacts,
@@ -56,9 +56,22 @@ function parseDraft(question: Question, draft: string): unknown {
   return draft;
 }
 
-function QuestionForm(props: { question: Question; onAnswer: (value: unknown) => void; progress: number }) {
-  const { question, onAnswer, progress } = props;
-  const [draft, setDraft] = useState("");
+function draftFromValue(question: Question, value: unknown): string {
+  if (value === undefined) return "";
+  if (question.answerType === "boolean") return ""; // rendered via the selected choice-card, not the text draft
+  return String(value);
+}
+
+function QuestionForm(props: {
+  question: Question;
+  onAnswer: (value: unknown) => void;
+  onBack?: () => void;
+  progress: number;
+  /** Set while reviewing/editing an already-answered question (resolveWizardStep's "reviewing" step) — pre-fills the current value. */
+  currentValue?: unknown;
+}) {
+  const { question, onAnswer, onBack, progress, currentValue } = props;
+  const [draft, setDraft] = useState(() => draftFromValue(question, currentValue));
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
 
   function submit() {
@@ -79,22 +92,33 @@ function QuestionForm(props: { question: Question; onAnswer: (value: unknown) =>
         <div className="wizard-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
       </div>
 
+      {onBack && (
+        <button type="button" className="btn btn-ghost btn-sm" style={{ marginBottom: 8 }} onClick={onBack}>
+          → חזרה לשאלה הקודמת
+        </button>
+      )}
+
       <h2 className="wizard-question">{question.text}</h2>
       {question.helpText && <p className="wizard-help">{question.helpText}</p>}
 
       {question.answerType === "boolean" ? (
         <div className="choice-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-          <button type="button" className="choice-card" onClick={() => onAnswer(true)}>
+          <button type="button" className={`choice-card${currentValue === true ? " selected" : ""}`} onClick={() => onAnswer(true)}>
             כן
           </button>
-          <button type="button" className="choice-card" onClick={() => onAnswer(false)}>
+          <button type="button" className={`choice-card${currentValue === false ? " selected" : ""}`} onClick={() => onAnswer(false)}>
             לא
           </button>
         </div>
       ) : question.answerType === "single_select" ? (
         <div className="choice-grid">
           {options.map((opt) => (
-            <button key={opt.value} type="button" className="choice-card" onClick={() => onAnswer(opt.value)}>
+            <button
+              key={opt.value}
+              type="button"
+              className={`choice-card${currentValue === opt.value ? " selected" : ""}`}
+              onClick={() => onAnswer(opt.value)}
+            >
               {opt.label}
             </button>
           ))}
@@ -164,6 +188,11 @@ function persistFact(clientProfileId: string, fact: Fact): void {
 
 export default function QuestionnairePage() {
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  // Ordered list of question ids actually asked, and a read head into it —
+  // see resolveWizardStep's doc comment for the full model. pointer ===
+  // history.length means "at the live edge" (adaptive selection applies).
+  const [history, setHistory] = useState<string[]>([]);
+  const [pointer, setPointer] = useState(0);
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -188,6 +217,15 @@ export default function QuestionnairePage() {
         if (questionId) rehydrated[questionId] = fact.value;
       }
       setAnswers(rehydrated);
+      // Best-effort history reconstruction after a refresh: the API doesn't
+      // record the order questions were originally asked in, only the facts
+      // themselves — so "back" after a refresh walks answers in the order
+      // they came back from the DB (in practice usually creation order),
+      // not necessarily the exact original sequence. Good enough for
+      // "let me fix something I got wrong," not claimed as more than that.
+      const reconstructedHistory = Object.keys(rehydrated);
+      setHistory(reconstructedHistory);
+      setPointer(reconstructedHistory.length);
       setLoaded(true);
     })();
     return () => {
@@ -195,7 +233,7 @@ export default function QuestionnairePage() {
     };
   }, []);
 
-  const next = useMemo(() => getNextQuestion(STARTER_QUESTIONS, answers), [answers]);
+  const step = useMemo(() => resolveWizardStep(STARTER_QUESTIONS, answers, history, pointer), [answers, history, pointer]);
   const progress = useMemo(() => completionScore(STARTER_QUESTIONS, answers), [answers]);
 
   const facts: Fact[] = useMemo(
@@ -215,10 +253,28 @@ export default function QuestionnairePage() {
         persistFact(clientProfileId, fact);
       }
     }
+    if (step.kind === "reviewing") {
+      // Editing a previous answer invalidates whatever came after it (later
+      // questions may have been selected/gated based on the old value) —
+      // truncate history here and let live selection pick up fresh from
+      // this point, rather than silently carrying over now-possibly-stale
+      // downstream answers.
+      setHistory((prev) => [...prev.slice(0, pointer), question.id]);
+      setPointer((p) => p + 1);
+    } else {
+      setHistory((prev) => [...prev, question.id]);
+      setPointer((p) => p + 1);
+    }
+  }
+
+  function handleBack() {
+    setPointer((p) => Math.max(0, p - 1));
   }
 
   async function handleRestart() {
     setAnswers({});
+    setHistory([]);
+    setPointer(0);
     if (clientProfileId) {
       await fetch(`/api/facts?clientProfileId=${clientProfileId}`, { method: "DELETE" }).catch(() => {});
     }
@@ -233,7 +289,7 @@ export default function QuestionnairePage() {
         decisionImpact ורלוונטיות (showWhen).
       </p>
       <p>
-        <Link href="/" style={{ color: "var(--accent)" }}>
+        <Link href="/" style={{ color: "var(--brand)" }}>
           ← חזרה לתצוגת ה-5 פרופילים
         </Link>
       </p>
@@ -246,22 +302,39 @@ export default function QuestionnairePage() {
 
       {!loaded ? (
         <p>טוען נתונים שמורים...</p>
-      ) : next ? (
-        <QuestionForm key={next.id} question={next} progress={progress} onAnswer={(value) => handleAnswer(next, value)} />
+      ) : step.kind !== "done" ? (
+        <QuestionForm
+          key={step.question.id}
+          question={step.question}
+          progress={progress}
+          currentValue={answers[step.question.id]}
+          onAnswer={(value) => handleAnswer(step.question, value)}
+          onBack={pointer > 0 ? handleBack : undefined}
+        />
       ) : (
-        <LiveRecommendations facts={facts} clientProfileId={clientProfileId ?? "unknown"} onRestart={handleRestart} />
+        <LiveRecommendations
+          facts={facts}
+          clientProfileId={clientProfileId ?? "unknown"}
+          onRestart={handleRestart}
+          onBack={pointer > 0 ? handleBack : undefined}
+        />
       )}
     </main>
   );
 }
 
-function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; onRestart: () => void }) {
-  const { facts, clientProfileId, onRestart } = props;
+function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; onRestart: () => void; onBack?: () => void }) {
+  const { facts, clientProfileId, onRestart, onBack } = props;
   const computed = useMemo(() => computeAllRecommendations(facts, clientProfileId, new Date()), [facts, clientProfileId]);
   const { life, disability, ci, ltc, health } = computed;
 
   return (
     <>
+      {onBack && (
+        <button type="button" className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={onBack}>
+          → חזרה לשאלה האחרונה
+        </button>
+      )}
       <p style={{ fontWeight: 600 }}>סיימת! אלו ההמלצות המחושבות מהתשובות שלך, ממש עכשיו, על פני כל חמשת הביטוחים:</p>
       <p>
         <Link href="/report" style={{ color: "var(--brand)", fontWeight: 600 }}>
@@ -293,7 +366,7 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
             <p className="missing" style={{ color: "var(--muted)" }}>
               חלופה מוגבלת תקציב: כיסוי נתמך {formatExact(life.affordability.budgetSupportedCoverage.toExactString())} · פער שנותר{" "}
               {formatExact(life.affordability.remainingUninsuredGap.toExactString())} (§20 — ראה{" "}
-              <Link href="/report" style={{ color: "var(--accent)" }}>
+              <Link href="/report" style={{ color: "var(--brand)" }}>
                 דוח מלא
               </Link>
               )

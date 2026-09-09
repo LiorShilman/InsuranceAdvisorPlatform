@@ -2,6 +2,52 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-09 — Questionnaire back/forward navigation
+
+Real gap: the questionnaire had no way to go back and fix a previous
+answer — only a full restart (`DELETE /api/facts`, wiping everything).
+Since the next question is chosen adaptively (`getNextQuestion` re-scores
+all unanswered-and-relevant questions every time, not a fixed list), a
+naive "go back" can't just decrement an index into a static array.
+
+1. **New `resolveWizardStep(questions, answers, history, pointer)`**
+   (`packages/questionnaire`, unit-tested, 5 new tests) layers navigation
+   on top of `getNextQuestion` without changing its own adaptive logic:
+   `history` is the ordered list of question ids actually asked;
+   `pointer` is a read head into it. While `pointer < history.length`,
+   it re-shows `history[pointer]` *exactly* — deliberately does NOT
+   re-run `getNextQuestion`, since a different answer elsewhere could
+   make some other question outscore it now, and jumping to that instead
+   would make "back" feel broken. Only at the live edge
+   (`pointer === history.length`) does adaptive selection resume.
+2. **Editing a previous answer truncates history from that point** —
+   later questions may have been selected/shown based on the old value,
+   so keeping them (and their answers) around would risk staleness. This
+   does NOT retroactively clear any already-persisted Facts a `showWhen`
+   might now consider irrelevant (e.g. changing dependents 2→0 doesn't
+   erase `household.youngestDependentAge`) — a known, narrow limitation:
+   the calculators still read whatever Facts exist, so this can't produce
+   a wrong calculation, only a lingering value nothing currently asks
+   about. Fixing that fully would mean walking the `showWhen` dependency
+   graph on every edit; deferred as a separate, larger piece of work.
+3. **`QuestionForm` now takes `currentValue`**, pre-filling the text/money
+   draft and visually marking the previously-selected choice-card
+   (new `.selected` CSS class) when reviewing.
+4. **Best-effort history reconstruction after a page refresh**: the API
+   doesn't record original ask-order, only the Facts themselves, so
+   `history` on load is rebuilt from the order facts come back from the
+   DB (in practice usually creation order) — documented in-code as
+   "good enough to fix something, not a guaranteed original sequence."
+5. Also fixed 2 leftover `var(--accent)` references in this file (missed
+   in the earlier CSS-token pass) while already touching it.
+6. Verified: `tsc -b` (had to rebuild package dist output — `apps/web`
+   resolves workspace packages via their compiled `.d.ts`, not source,
+   so a `packages/questionnaire` source change needs a rebuild before
+   `apps/web`'s own typecheck sees the new export), `npm run lint`,
+   `npm test` (145/145, up from 140), a clean `next build`, and confirmed
+   live against the restarted dev server that the back button and
+   selected-choice styling actually compiled into the served bundle.
+
 ## 2026-09-08 — Questionnaire clarity pass: real helpText + a raw-identifier-leak bug
 
 User feedback: "לדעתי יש להוסיף הסבר קצר בשאלון האישי ... לפעמים המשתמש לא
