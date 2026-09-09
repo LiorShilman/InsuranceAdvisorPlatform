@@ -2,6 +2,42 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-09 — Fixed English leaking into the (Hebrew) report
+
+User spotted it directly from a screenshot of their own report: "אם
+השאלון בעברית למה הדוח באנגלית בחלקו" (if the questionnaire is Hebrew why
+is part of the report in English). Two distinct real bugs, not one:
+
+1. **All 11 `Assumption.description` strings across the 4 Money-based
+   calculators** (life, disability, critical illness, LTC) were written in
+   English from when they were first authored — e.g. report §3 literally
+   showed "Existing family-benefit life cover unknown — assumed 0 pending
+   data (widens, not narrows, the gap)." Translated all 11 to Hebrew,
+   preserving the exact meaning (especially the "widens/narrows the gap"
+   and "understates the need" qualifiers — these aren't just prose, they
+   tell the reader which direction an unknown-defaulted-to-zero skews the
+   number). No test asserted the exact English text, so nothing else
+   needed updating besides the calculators themselves.
+2. **Report §2 ("נתונים שסופקו") showed raw stored Fact values verbatim**
+   for every `single_select` question — e.g. `household.maritalStatus`
+   stores the literal string `"divorced"`, and the report printed that
+   instead of "גרוש/ה". Same issue for the 7 health-module facts
+   (`"yes"/"no"/"unknown"` shown raw instead of "יש לי"/"אין לי"/"לא
+   יודע/ת"). The Hebrew label mapping for these already existed — but only
+   inside `questionnaire/page.tsx`, used solely to render the choice-card
+   buttons, never to translate a value back for display elsewhere.
+   Extracted it into `apps/web/lib/answer-labels.ts` (`SINGLE_SELECT_OPTIONS`,
+   `HEALTH_MODULE_TRISTATE_OPTIONS`, `singleSelectLabelForFact`), now
+   imported by both `questionnaire/page.tsx` (no behavior change there,
+   just de-duplicated) and `report/page.tsx` (the actual fix).
+3. Verified: `tsc -b` + `apps/web`'s own `tsc --noEmit`, `npm run lint`,
+   `npm test` (145/145 — no test depended on the changed strings), a
+   clean `next build`, and confirmed live against the restarted dev
+   server, directly against the same demo-profile data that produced the
+   user's screenshot (`household.maritalStatus = "divorced"`), that the
+   compiled bundle now contains "גרוש/ה" and the Hebrew assumption text,
+   and no longer contains any of the old English assumption strings.
+
 ## 2026-09-09 — Questionnaire back/forward navigation
 
 Real gap: the questionnaire had no way to go back and fix a previous

@@ -88,7 +88,7 @@ export class LongTermCareCalculator implements NeedsCalculator<LongTermCareCalcu
       input.expectedMonthlyCareCost,
       config.careAssumptions.assumedMonthlyLTCCareCost,
       "expectedMonthlyCareCost",
-      "Household-specific expected monthly care cost unknown — fell back to the configured general assumption.",
+      "עלות טיפול חודשית צפויה, ספציפית למשפחה, אינה ידועה — הוחלפה בהנחה הכללית המוגדרת במערכת.",
       missingFacts,
       assumptions,
     );
@@ -96,7 +96,7 @@ export class LongTermCareCalculator implements NeedsCalculator<LongTermCareCalcu
     const monthlySelfFundingCapacity = resolveMoney(
       input.monthlySelfFundingCapacity,
       "monthlySelfFundingCapacity",
-      "Monthly self-funding capacity unknown — assumed 0 pending data (widens, not narrows, the gap).",
+      "יכולת מימון עצמי חודשית אינה ידועה — הונחה כ-0 עד להשלמת הנתון (מרחיב, ולא מצמצם, את הפער).",
       missingFacts,
       assumptions,
     );

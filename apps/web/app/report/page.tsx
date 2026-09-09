@@ -9,6 +9,7 @@ import { ResultCard, CATEGORY_ICONS, formatExact, PRIORITY_BAND_LABELS } from ".
 import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations, type ComputedRecommendations } from "../../lib/compute-recommendations";
 import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup";
+import { singleSelectLabelForFact } from "../../lib/answer-labels";
 
 /**
  * The PRD §39 report structure, built from the SAME persisted Facts the
@@ -27,9 +28,14 @@ const FACT_LABELS = new Map<string, string>(
   STARTER_QUESTIONS.flatMap((q) => q.factsProduced.map((key): [string, string] => [key, q.text])),
 );
 
-function formatFactValue(value: unknown): string {
+/** `factKey` is optional only for the one call site (§13's missing-facts list) that passes a fact *key*, not a value — see its own translation below instead. */
+function formatFactValue(value: unknown, factKey?: string): string {
   if (typeof value === "number") return new Intl.NumberFormat("he-IL").format(value);
   if (typeof value === "boolean") return value ? "כן" : "לא";
+  if (factKey) {
+    const label = singleSelectLabelForFact(factKey, value);
+    if (label) return label;
+  }
   return String(value);
 }
 
@@ -148,7 +154,7 @@ export default function ReportPage() {
               {facts.map((f) => (
                 <tr key={f.key}>
                   <td>{FACT_LABELS.get(f.key) ?? f.key}</td>
-                  <td className="amount">{formatFactValue(f.value)}</td>
+                  <td className="amount">{formatFactValue(f.value, f.key)}</td>
                 </tr>
               ))}
             </tbody>
@@ -175,7 +181,11 @@ export default function ReportPage() {
         <h2>4. מפת סיכון משק הבית</h2>
         <p>
           תלויים כלכליים: {computed.hasDependents ? "כן" : "לא ידוע/אין"}. סטטוס משפחתי:{" "}
-          {formatFactValue(facts.find((f) => f.key === "household.maritalStatus")?.value ?? "לא סופק")}.
+          {(() => {
+            const maritalStatus = facts.find((f) => f.key === "household.maritalStatus")?.value;
+            return maritalStatus === undefined ? "לא סופק" : formatFactValue(maritalStatus, "household.maritalStatus");
+          })()}
+          .
         </p>
       </section>
 

@@ -15,6 +15,7 @@ import {
 import { ResultCard, CATEGORY_ICONS, formatExact } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations } from "../../lib/compute-recommendations";
+import { optionsForQuestion } from "../../lib/answer-labels";
 
 /**
  * A REAL interactive flow across all five calculators — no hardcoded
@@ -24,27 +25,6 @@ import { computeAllRecommendations } from "../../lib/compute-recommendations";
  * Facts→calculator adapters (not the `fromHouseholdFixture*` demo ones
  * the main `/` page uses).
  */
-
-const SINGLE_SELECT_OPTIONS: Record<string, Array<{ value: string; label: string }>> = {
-  household_marital_status: [
-    { value: "single", label: "רווק/ה" },
-    { value: "married", label: "נשוי/אה" },
-    { value: "divorced", label: "גרוש/ה" },
-    { value: "widowed", label: "אלמן/ה" },
-    { value: "partnered", label: "ידוע/ה בציבור" },
-  ],
-};
-
-const HEALTH_MODULE_TRISTATE_OPTIONS = [
-  { value: "yes", label: "יש לי" },
-  { value: "no", label: "אין לי" },
-  { value: "unknown", label: "לא יודע/ת" },
-];
-
-function optionsFor(question: Question): Array<{ value: string; label: string }> {
-  if (question.id.startsWith("health_module_")) return HEALTH_MODULE_TRISTATE_OPTIONS;
-  return SINGLE_SELECT_OPTIONS[question.id] ?? [];
-}
 
 function parseDraft(question: Question, draft: string): unknown {
   if (draft === "") return undefined;
@@ -84,7 +64,7 @@ function QuestionForm(props: {
     setIssues([]);
   }
 
-  const options = optionsFor(question);
+  const options = optionsForQuestion(question);
 
   return (
     <section className="wizard-card">
@@ -272,6 +252,10 @@ export default function QuestionnairePage() {
   }
 
   async function handleRestart() {
+    // Deletes every answer with no undo — more destructive than any other
+    // action in this app, so it gets a confirmation (see the same reasoning
+    // on /coverages's delete button).
+    if (!window.confirm("להתחיל את השאלון מחדש? כל התשובות שנשמרו יימחקו ולא ניתן לשחזר אותן.")) return;
     setAnswers({});
     setHistory([]);
     setPointer(0);

@@ -111,14 +111,14 @@ export class LifeInsuranceCalculator implements NeedsCalculator<LifeCalculatorIn
       const spend = resolveMoney(
         input.householdRequiredAnnualSpend,
         "householdRequiredAnnualSpend",
-        "Household required annual spend unknown — assumed 0 pending data.",
+        "הוצאה שנתית נדרשת למשק הבית אינה ידועה — הונחה כ-0 עד להשלמת הנתון.",
         missingFacts,
         assumptions,
       );
       const survivorIncome = resolveMoney(
         input.survivorReliableAnnualIncome,
         "survivorReliableAnnualIncome",
-        "Survivor reliable annual income unknown — assumed 0 pending data (widens, not narrows, the gap).",
+        "הכנסה שנתית אמינה לשאיר אינה ידועה — הונחה כ-0 עד להשלמת הנתון (מרחיב, ולא מצמצם, את הפער).",
         missingFacts,
         assumptions,
       );
@@ -186,7 +186,7 @@ export class LifeInsuranceCalculator implements NeedsCalculator<LifeCalculatorIn
     const existingLifeInsurance = resolveMoney(
       input.existingLifeInsurance,
       "existingLifeInsurance",
-      "Existing family-benefit life cover unknown — assumed 0 pending data (widens, not narrows, the gap).",
+      "כיסוי ביטוח חיים קיים (לטובת המשפחה) אינו ידוע — הונח כ-0 עד להשלמת הנתון (מרחיב, ולא מצמצם, את הפער).",
       missingFacts,
       assumptions,
     );
@@ -200,7 +200,7 @@ export class LifeInsuranceCalculator implements NeedsCalculator<LifeCalculatorIn
     const earmarkedLiquidAssets = resolveMoney(
       input.earmarkedLiquidAssets,
       "earmarkedLiquidAssets",
-      "Earmarked liquid assets unknown — assumed 0 pending data (widens, not narrows, the gap).",
+      "נכסים נזילים מיועדים אינם ידועים — הונחו כ-0 עד להשלמת הנתון (מרחיב, ולא מצמצם, את הפער).",
       missingFacts,
       assumptions,
     );

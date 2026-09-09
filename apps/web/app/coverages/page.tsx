@@ -127,8 +127,12 @@ export default function CoveragesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, subtype: string) {
     if (!clientProfileId) return;
+    // Irreversible — this app has no undo/trash (§34 real audit trail doesn't
+    // exist yet) — a plain confirm() is the right amount of ceremony here,
+    // not a full modal component just for this one destructive action.
+    if (!window.confirm(`למחוק את הפוליסה "${subtype}"? לא ניתן לשחזר.`)) return;
     await fetch(`/api/coverages?id=${id}`, { method: "DELETE" });
     await reload(clientProfileId);
   }
@@ -300,7 +304,7 @@ export default function CoveragesPage() {
                   </td>
                   <td>{c.beneficiaryType ? BENEFICIARY_LABELS[c.beneficiaryType] : "—"}</td>
                   <td>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(c.id)}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(c.id, c.subtype)}>
                       🗑 מחק
                     </button>
                   </td>

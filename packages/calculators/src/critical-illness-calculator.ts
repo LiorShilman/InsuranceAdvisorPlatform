@@ -71,7 +71,7 @@ export class CriticalIllnessCalculator implements NeedsCalculator<CriticalIllnes
     const monthlyExpenses = resolveMoney(
       input.monthlyEssentialExpenses,
       "monthlyEssentialExpenses",
-      "Monthly essential expenses unknown — assumed 0 pending data (understates the need).",
+      "הוצאות חודשיות חיוניות אינן ידועות — הונחו כ-0 עד להשלמת הנתון (מקטין את הצורך המחושב מתחת לצורך האמיתי).",
       missingFacts,
       assumptions,
     );
@@ -109,7 +109,7 @@ export class CriticalIllnessCalculator implements NeedsCalculator<CriticalIllnes
     const existingCoverage = resolveMoney(
       input.existingCriticalIllnessCoverage,
       "existingCriticalIllnessCoverage",
-      "Existing critical illness coverage unknown — assumed 0 pending data (widens, not narrows, the gap).",
+      "כיסוי מחלות קשות קיים אינו ידוע — הונח כ-0 עד להשלמת הנתון (מרחיב, ולא מצמצם, את הפער).",
       missingFacts,
       assumptions,
     );

@@ -73,7 +73,7 @@ export class DisabilityInsuranceCalculator
     const essential = resolveMoney(
       input.essentialMonthlyExpenses,
       "essentialMonthlyExpenses",
-      "Essential monthly expenses unknown — assumed 0 pending data (understates the need).",
+      "הוצאות חודשיות חיוניות אינן ידועות — הונחו כ-0 עד להשלמת הנתון (מקטין את הצורך המחושב מתחת לצורך האמיתי).",
       missingFacts,
       assumptions,
     );
@@ -96,7 +96,7 @@ export class DisabilityInsuranceCalculator
     const dependentsNeeds = resolveMoney(
       input.dependentsMonthlyNeeds,
       "dependentsMonthlyNeeds",
-      "Dependents' monthly needs unknown — assumed 0 pending data (understates the need if the household has dependents).",
+      "צרכי תלויים חודשיים אינם ידועים — הונחו כ-0 עד להשלמת הנתון (מקטין את הצורך המחושב אם למשפחה יש תלויים).",
       missingFacts,
       assumptions,
     );
@@ -112,7 +112,7 @@ export class DisabilityInsuranceCalculator
     const existingNetExpectedDisabilityIncome = resolveMoney(
       input.existingNetExpectedDisabilityIncome,
       "existingNetExpectedDisabilityIncome",
-      "Existing net expected disability income unknown — assumed 0 pending data (widens, not narrows, the gap).",
+      "הכנסה נטו קיימת צפויה מאבדן כושר עבודה אינה ידועה — הונחה כ-0 עד להשלמת הנתון (מרחיב, ולא מצמצם, את הפער).",
       missingFacts,
       assumptions,
     );
