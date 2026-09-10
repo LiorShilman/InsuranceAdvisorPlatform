@@ -18,14 +18,26 @@ width). Same *kind* of root cause as the earlier nav-wrap fix
 (unconstrained content width driving unwanted layout movement), just
 triggered by an interaction instead of by page width.
 
-Fix: `.app-theme-toggle` gets `min-width: 108px` (room for the longest
-label, "לפי המערכת") and `justify-content: center` — the button's
-rendered width now stays constant across all 3 theme states, so nothing
-around it moves when it's clicked.
+First attempt used `min-width: 108px` — the user immediately pointed out
+the actual robust version: a real fixed `width`, not a `min-width` floor
+(which still lets the widest label push the button past it, so the width
+wasn't actually identical across states, just closer). Switched to
+`width: 160px` + `overflow: hidden` + `white-space: nowrap` as a safety
+net against a future longer label.
 
-Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
-`next build`, confirmed live that `.app-theme-toggle`'s CSS compiled in
-and the button in the served HTML actually carries the class.
+This time verified with an actual headless browser instead of just
+`curl`/bundle-grep (installed Playwright via `npx playwright install
+chromium`, per the `run` skill's browser-driven-app pattern — no
+`chromium-cli` available in this environment): scripted 4 clicks through
+system→light→dark→system, measuring `.app-theme-toggle`'s real
+`getBoundingClientRect()` width and x-position after each one, plus the
+first nav link's x-position before/after a click. All 4 states measured
+**exactly** 160.0px / x=50.0, and the first nav link's position was
+bit-for-bit identical before and after clicking — not merely "close," a
+real, measured, pixel-exact match. Screenshotted all 3 theme states
+(including dark mode) and visually confirmed no clipping or overlap.
+`tsc --noEmit`, `npm run lint`, `npm test` (145/145), and a clean `next
+build` all pass too.
 
 ## 2026-09-10 — Persona names on `/`: same English-leak bug, third occurrence
 

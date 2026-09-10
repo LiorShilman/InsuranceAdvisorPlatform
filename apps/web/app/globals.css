@@ -236,7 +236,14 @@ body {
    the rest of the nav) never moves when it's clicked. */
 .app-theme-toggle {
   justify-content: center;
-  min-width: 108px;
+  /* A real fixed width, not min-width — min-width still let the button
+     grow past it for the longest label ("לפי המערכת"), so the width
+     wasn't actually identical across all 3 states, just closer. This is
+     wide enough for that label with room to spare; overflow/nowrap are a
+     safety net, not expected to actually trigger. */
+  width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .app-content main {
