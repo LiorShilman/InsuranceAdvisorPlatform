@@ -84,9 +84,15 @@ export function WaterfallChart(props: { lines: CalculationTraceLine[]; totalLabe
                 rx="4"
                 fill={isPositive ? "var(--chart-positive)" : "var(--chart-negative)"}
               >
-                <title>
-                  {line.label}: {formatExact(line.amountExact)}
-                </title>
+                {/* A single string child, not multiple JSX expressions — <title> is an
+                    RCDATA element (like <textarea>/<style>), so the browser's native
+                    HTML parser treats its content as literal text, never as markup or
+                    comments. React relies on inserting <!-- --> comment markers between
+                    sibling children to keep hydration matching order-independent, but
+                    inside RCDATA those markers become part of the literal rendered text
+                    on the very first server parse — a real, reproducible hydration
+                    mismatch, not a cosmetic one (caught from a live console error). */}
+                <title>{`${line.label}: ${formatExact(line.amountExact)}`}</title>
               </rect>
               <text x={x} y={labelY} textAnchor="middle" fontSize="10" fill="var(--muted)" fontWeight={700}>
                 {i + 1}
@@ -105,9 +111,7 @@ export function WaterfallChart(props: { lines: CalculationTraceLine[]; totalLabe
           return (
             <g>
               <rect x={x - barWidth / 2} y={topY} width={barWidth} height={height} rx="4" fill="var(--chart-total)">
-                <title>
-                  {totalLabel}: {formatExact(totalExact)}
-                </title>
+                <title>{`${totalLabel}: ${formatExact(totalExact)}`}</title>
               </rect>
               <text x={x} y={labelY} textAnchor="middle" fontSize="10" fill="var(--muted)" fontWeight={700}>
                 {"="}

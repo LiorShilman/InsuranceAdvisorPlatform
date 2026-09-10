@@ -2,6 +2,44 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Real hydration mismatch in WaterfallChart's `<title>` tooltip
+
+User pasted a live browser console error: a hydration mismatch, React
+"switching the entire root to client rendering," pointing straight at
+`WaterfallChart`'s `<title>` element with a real, specific missing-text
+message ("השלמת הכנסה לתלויים").
+
+Root cause: `<title>` — inside an SVG `<rect>`, used here as the native
+hover tooltip — is an **RCDATA element** in the HTML parsing spec (same
+category as `<textarea>`/`<style>`/`<script>`): the browser's native
+parser treats everything between its open and close tags as **literal
+text**, never as markup or comments. `WaterfallChart` wrote
+`<title>{line.label}: {formatExact(...)}</title>` — two separate JSX
+expressions as siblings. React's SSR renderer inserts `<!-- -->` comment
+markers between sibling text expressions so client-side hydration can
+match them back up in order (harmless everywhere else — confirmed
+earlier in this log for a plain `<span>` in the confidence-badge fix,
+where the browser's normal parser treats `<!-- -->` as an actual,
+invisible comment). Inside RCDATA content, that mechanism breaks: the
+literal characters `<!-- -->` become part of the rendered *text*, not a
+comment — so the server's first-paint HTML and React's own in-memory
+expectation of that title's text genuinely disagree, a real mismatch,
+not a false positive.
+
+Fix: collapse each `<title>` to a single template-literal string child
+(`` <title>{`${label}: ${formatExact(amount)}`}</title> ``) instead of
+multiple JSX expressions — nothing left for React to insert a marker
+between. Same fix applied to both `<title>` usages (per-line bar and the
+total bar). General lesson recorded in-code: RCDATA elements can't safely
+take multiple interpolated children the way ordinary HTML elements can.
+
+Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+`next build`; confirmed live against the restarted dev server that the
+exact label from the user's error (`השלמת הכנסה לתלויים`) now renders as
+one clean `<title>` string in the raw server HTML with no embedded
+comment-marker text, and that no `<title>` tag anywhere in the page
+contains a `<!--` sequence.
+
 ## 2026-09-10 — Nav bar: scroll instead of an orphaned wrapped row
 
 User screenshot: with 5 nav links (grew from 3 to 5 across this session's
