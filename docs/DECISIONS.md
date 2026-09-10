@@ -2,6 +2,31 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Theme-toggle button was shifting the whole nav bar on click
+
+User: "עכשיו זה שורה אחת, אבל למה שינוי הכפתור גורם לתזוזה של כל ה
+NAV BAR" (now it's one line, but why does clicking the button shift the
+whole nav bar).
+
+Root cause: the theme-toggle button's own label text changes length
+every click ("לפי המערכת" → "בהיר" → "כהה" → back) with no fixed width
+reserved — so the button itself grew/shrank on every click, and since
+it sits inside the same flex row as every nav link, its own width
+change repositioned everything else in that row too (a flex row's
+children's screen positions all depend on each sibling's current
+width). Same *kind* of root cause as the earlier nav-wrap fix
+(unconstrained content width driving unwanted layout movement), just
+triggered by an interaction instead of by page width.
+
+Fix: `.app-theme-toggle` gets `min-width: 108px` (room for the longest
+label, "לפי המערכת") and `justify-content: center` — the button's
+rendered width now stays constant across all 3 theme states, so nothing
+around it moves when it's clicked.
+
+Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+`next build`, confirmed live that `.app-theme-toggle`'s CSS compiled in
+and the button in the served HTML actually carries the class.
+
 ## 2026-09-10 — Persona names on `/`: same English-leak bug, third occurrence
 
 User screenshot of `/`'s persona accordion: titles literally read

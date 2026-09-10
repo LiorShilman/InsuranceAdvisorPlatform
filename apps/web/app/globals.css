@@ -228,6 +228,16 @@ body {
   color: var(--brand-dark);
 }
 
+/* Its own label text changes length every click ("לפי המערכת" -> "בהיר"
+   -> "כהה"), which without a fixed width shifted this button's own size —
+   and everything next to it in the row along with it, since it sits
+   inside a flex row where every sibling's position depends on the
+   others' widths. Reserve room for the longest label so the button (and
+   the rest of the nav) never moves when it's clicked. */
+.app-theme-toggle {
+  justify-content: center;
+  min-width: 108px;
+}
 
 .app-content main {
   max-width: 1240px;

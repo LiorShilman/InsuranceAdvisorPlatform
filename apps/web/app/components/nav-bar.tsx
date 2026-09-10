@@ -63,7 +63,7 @@ export function NavBar() {
               <span className="app-nav-link-label">{link.label}</span>
             </Link>
           ))}
-          <button type="button" className="app-nav-link" onClick={cycleTheme} title={`ערכת נושא: ${themeLabel} (לחץ להחלפה)`}>
+          <button type="button" className="app-nav-link app-theme-toggle" onClick={cycleTheme} title={`ערכת נושא: ${themeLabel} (לחץ להחלפה)`}>
             <span aria-hidden="true">{themeIcon}</span>
             <span className="app-nav-link-label">{themeLabel}</span>
           </button>
