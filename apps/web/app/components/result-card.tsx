@@ -31,6 +31,17 @@ export const CONFIDENCE_LABELS: Record<string, string> = {
   low: "נמוכה",
 };
 
+/**
+ * Status colors alone (--success/--warning/--danger/--danger-strong) are
+ * NOT a safe identity channel — see docs/DECISIONS.md's palette-validation
+ * entry: even the dataviz skill's own reference status ramp fails a strict
+ * pairwise CVD check, and explicitly calls "icon + label, never color
+ * alone" the real mitigation, not a perfect hex triplet. These prefix
+ * every status badge so meaning survives even if the color is
+ * indistinguishable to a given viewer.
+ */
+export const CONFIDENCE_ICONS: Record<string, string> = { high: "✓", medium: "!", low: "✕" };
+
 export const PRIORITY_BAND_LABELS: Record<string, string> = {
   CRITICAL: "קריטי",
   HIGH: "גבוה",
@@ -39,8 +50,17 @@ export const PRIORITY_BAND_LABELS: Record<string, string> = {
   INFORMATIONAL: "מידע בלבד",
 };
 
+export const PRIORITY_BAND_ICONS: Record<string, string> = {
+  CRITICAL: "✕",
+  HIGH: "!!",
+  MEDIUM: "!",
+  LOW: "✓",
+  INFORMATIONAL: "·",
+};
+
 export function priorityBadgeText(band: string, score: number): string {
-  return `עדיפות: ${PRIORITY_BAND_LABELS[band] ?? band} (${score})`;
+  const icon = PRIORITY_BAND_ICONS[band];
+  return `${icon ? icon + " " : ""}עדיפות: ${PRIORITY_BAND_LABELS[band] ?? band} (${score})`;
 }
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -99,7 +119,9 @@ export function ResultCard(props: {
         )}
         {status && <span className="badge">סטטוס: {STATUS_LABELS[status] ?? status}</span>}
         {nextReviewDate && <span className="badge next-review">🗓 בדיקה הבאה: {nextReviewDate}</span>}
-        <span className={`badge confidence-${confidence}`}>אמינות נתונים: {CONFIDENCE_LABELS[confidence]}</span>
+        <span className={`badge confidence-${confidence}`}>
+          {CONFIDENCE_ICONS[confidence]} אמינות נתונים: {CONFIDENCE_LABELS[confidence]}
+        </span>
         {badges.map((b) => (
           <span className="badge" key={b}>
             {b}

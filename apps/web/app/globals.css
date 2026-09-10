@@ -18,6 +18,21 @@
 
   --info: #1d4ed8;
   --info-bg: #e8effe;
+  /* Status colors (confidence/priority badges). Running these 4 through
+     validate_palette.js's categorical pairwise-CVD check FAILs (danger vs
+     warning, danger vs success) — but that check's own footer says its
+     scope is "categorical palettes only... for a lone status/text color
+     check WCAG text contrast" instead. A confidence badge on one card and
+     a priority badge on another aren't a shared side-by-side categorical
+     series the way waterfall-chart.tsx's positive/negative bars are (that
+     one genuinely needed — and got — the categorical check); each of
+     these is an individual status indicator judged on its own contrast.
+     These values have solid contrast against their own -bg tint below.
+     The real, universally-correct mitigation for "can two status hues be
+     told apart" either way is icon + label, never color alone — hence
+     CONFIDENCE_ICONS/PRIORITY_BAND_ICONS in result-card.tsx carry
+     distinguishing *shape* regardless of what a viewer's color vision
+     reports. See docs/DECISIONS.md. */
   --success: #1a7f42;
   --success-bg: #e5f5ea;
   --warning: #92650b;

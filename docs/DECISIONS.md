@@ -2,6 +2,50 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Status-badge accessibility: icon shapes, not a hex swap
+
+Follow-up the user asked for directly after the waterfall-chart color
+finding: audit the app-wide status colors (confidence/priority badges),
+which use the same `--success`/`--warning`/`--danger`/`--danger-strong`
+tokens the waterfall chart's color-pair problem was found in.
+
+1. **Running `validate_palette.js`'s categorical check against these 4
+   confirmed the same kind of failure** (danger-vs-warning, danger-vs-
+   success both fail CVD separation) — but chasing a hex fix here went
+   through two wrong turns before landing right, worth recording:
+   - First tried the skill's own reference status palette
+     (good/warning/serious/critical, `references/palette.md`). It also
+     fails the categorical check (the reference file says so itself —
+     "warning and serious are sub-3:1 by design... icon + label is the
+     mitigation"), AND its bright yellow warning hex is illegible as
+     small badge *text* on a light background — trading one problem for
+     a worse, immediate one.
+   - Then tried hand-picked darker "text-safe" variants of the same 4
+     roles — still failed pairwise CVD separation (ΔE as low as 1.7),
+     confirming this isn't a values problem: a red/amber/green semantic
+     trio fundamentally can't achieve full separation for every CVD
+     type, a known, unavoidable limit of that hue family.
+   - **The actual fix**: the validator's own footer says its categorical
+     check's "scope: categorical palettes only... for a lone status/text
+     color check WCAG text contrast" instead. A confidence badge on one
+     card and a priority badge on another aren't a shared side-by-side
+     categorical series a reader must tell apart at a glance the way
+     `waterfall-chart.tsx`'s positive/negative bars are (which correctly
+     did need, and got, that exact check last entry) — each status badge
+     is judged alone, on its own contrast. **Reverted the hex values to
+     the originals** (already good contrast, already shipped, no reason
+     to break what wasn't actually broken) and applied the fix that
+     generalizes regardless of any hex choice: every confidence/priority
+     badge now prefixes an icon whose *shape* carries meaning
+     (`CONFIDENCE_ICONS`: ✓/!/✕, `PRIORITY_BAND_ICONS`: ·/✓/!/!!/✕) —
+     matching per marks-and-anatomy.md/palette.md's own repeated rule,
+     "icon + label, never color alone."
+2. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+   `next build`, and confirmed live against the restarted dev server —
+   curled `/`'s raw HTML and found the icon characters actually present
+   (split across React SSR hydration `<!-- -->` comment markers between
+   sibling JSX text expressions — invisible to a real viewer, not a bug).
+
 ## 2026-09-10 — Waterfall explainability chart (PRD §24), second slice
 
 PRD §24 gives a literal worked example of a "clickable number" expanding

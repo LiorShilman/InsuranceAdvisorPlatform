@@ -1,6 +1,6 @@
 import type { HealthCoverageModule } from "@insurance-advisor/domain";
 import type { HealthModuleAssessor } from "@insurance-advisor/calculators";
-import { CONFIDENCE_LABELS, REASON_CODE_LABELS } from "./result-card";
+import { CONFIDENCE_LABELS, CONFIDENCE_ICONS, REASON_CODE_LABELS } from "./result-card";
 
 export const HEALTH_MODULE_LABELS: Record<HealthCoverageModule, string> = {
   surgeries_israel: "ניתוחים בישראל",
@@ -31,7 +31,7 @@ export function HealthModuleCard(props: { assessments: ReturnType<HealthModuleAs
       </div>
       <div className="badges">
         <span className={`badge confidence-${assessments.confidence}`}>
-          אמינות נתונים: {CONFIDENCE_LABELS[assessments.confidence]}
+          {CONFIDENCE_ICONS[assessments.confidence]} אמינות נתונים: {CONFIDENCE_LABELS[assessments.confidence]}
         </span>
       </div>
       <table className="trace">
