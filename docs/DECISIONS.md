@@ -2,6 +2,42 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Final 3 polish items: protection score, save indicator, step animation
+
+Closes out the "raise the product a few more notches" list: a 0–100
+protection score, a save-status indicator, and a step transition — all
+small individually, all wired for real rather than decorative.
+
+1. **Protection score** — new `lib/protection-score.ts`, a hero figure
+   (>=48px, per marks-and-anatomy.md — exactly one per view) showing an
+   unweighted average of the 4 categories' `coverageRatio`, in
+   `CoverageOverview` (so it appears both on `/report` and at the end of
+   `/questionnaire` — the "you're done" reward moment). Icon + text tier
+   label (✓/!/✕ + "כיסוי טוב/חלקי/נמוך"), not color alone — same fix as
+   the status-badge entry above, applied here from the start instead of
+   needing a follow-up. Formula and thresholds are invented — see
+   docs/ASSUMPTIONS.md.
+2. **"נשמר ✓" indicator** — `persistFact` used to be fire-and-forget
+   (only a `console.error` nobody sees on failure, a real PRD §34 "no
+   silent data loss" gap). Now returns a promise; `handleAnswer` tracks
+   `saving → saved → idle` (or `error`, shown in red) via a small
+   `aria-live="polite"` indicator next to the page title, so a genuinely
+   failed save is now visible to the user instead of only the console.
+3. **Step transition** — `.wizard-card` gets a short (0.22s) fade+slide
+   CSS `@keyframes` animation, firing automatically on every question
+   change for free because each question is already a fresh React mount
+   (`key={question.id}`, from the autofocus-bug fix earlier in this log)
+   — no JS animation library, no new state. Respects
+   `prefers-reduced-motion`.
+4. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+   `next build`; confirmed live — the protection-score text and the
+   `wizard-step-in` keyframe both compiled into the served bundle/CSS,
+   and posted a real fact through the same `/api/facts` endpoint
+   `persistFact` calls to confirm the save path itself still works
+   (cleaned up the one verification fact afterward via a one-off Prisma
+   script, since `/api/facts`'s `DELETE` is bulk-by-profile only — left
+   the user's own 3 real facts on the demo profile untouched).
+
 ## 2026-09-10 — Coverage overview at the top of the report (radar rejected)
 
 User's originally-suggested form was a radar/spider chart across the 5

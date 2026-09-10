@@ -212,7 +212,7 @@ body {
 }
 
 .app-content main {
-  max-width: 1040px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 28px 20px 72px;
 }
@@ -586,6 +586,29 @@ table.trace td.amount {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: 32px 32px 28px;
+  /* Each question is a fresh React mount (key={question.id} — see DECISIONS.md's
+     autofocus-bug fix), so a plain CSS animation fires automatically on every
+     question change with no JS wiring needed. Subtle and short on purpose —
+     this repeats on every single question, so it must never feel like it's
+     making the user wait. */
+  animation: wizard-step-in 0.22s ease-out;
+}
+
+@keyframes wizard-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-card {
+    animation: none;
+  }
 }
 
 .wizard-progress-track {

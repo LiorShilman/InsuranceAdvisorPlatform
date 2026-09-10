@@ -14,6 +14,7 @@ import {
 } from "@insurance-advisor/questionnaire";
 import { ResultCard, CATEGORY_ICONS, formatExact } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
+import { CoverageOverview } from "../components/coverage-overview";
 import { computeAllRecommendations } from "../../lib/compute-recommendations";
 import { optionsForQuestion } from "../../lib/answer-labels";
 
@@ -147,9 +148,15 @@ const FACT_KEY_TO_QUESTION_ID = new Map<string, string>(
   STARTER_QUESTIONS.flatMap((q) => q.factsProduced.map((factKey) => [factKey, q.id] as const)),
 );
 
-/** Best-effort: a failed persist shouldn't block the user from continuing the flow client-side. */
-function persistFact(clientProfileId: string, fact: Fact): void {
-  fetch("/api/facts", {
+/**
+ * Best-effort: a failed persist shouldn't block the user from continuing
+ * the flow client-side — but now that the caller tracks the returned
+ * promise (for the "נשמר ✓" indicator), a failure is surfaced as an
+ * on-screen "שמירה נכשלה" instead of only a console.error nobody sees
+ * (PRD §34: no silent data loss).
+ */
+function persistFact(clientProfileId: string, fact: Fact): Promise<void> {
+  return fetch("/api/facts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -160,10 +167,21 @@ function persistFact(clientProfileId: string, fact: Fact): void {
       confidence: fact.confidence,
       verified: fact.verified,
     }),
-  }).catch(() => {
-    // A real product would surface/retry this (PRD §34: no silent data loss). Logged, not hidden.
-    console.error(`Failed to persist fact ${fact.key} — it only exists client-side until the next successful save.`);
+  }).then((res) => {
+    if (!res.ok) throw new Error(`Failed to persist fact ${fact.key}: HTTP ${res.status}`);
   });
+}
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function SaveIndicator(props: { status: SaveStatus }) {
+  const { status } = props;
+  const text = status === "saving" ? "שומר..." : status === "saved" ? "✓ נשמר" : status === "error" ? "✕ שמירה נכשלה" : "";
+  return (
+    <span aria-live="polite" style={{ fontSize: "0.8rem", color: status === "error" ? "var(--danger)" : "var(--muted)", opacity: status === "idle" ? 0 : 1, transition: "opacity 0.3s ease" }}>
+      {text || " "}
+    </span>
+  );
 }
 
 export default function QuestionnairePage() {
@@ -175,6 +193,7 @@ export default function QuestionnairePage() {
   const [pointer, setPointer] = useState(0);
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   // Real persistence (PRD §55: "no recommendation loss on page refresh") — backed by the
   // actual Postgres schema (prisma/schema.prisma), not browser-only state. One demo profile
@@ -229,9 +248,14 @@ export default function QuestionnairePage() {
   function handleAnswer(question: Question, value: unknown) {
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
     if (value !== undefined && clientProfileId) {
-      for (const fact of produceFacts(question, value)) {
-        persistFact(clientProfileId, fact);
-      }
+      const facts = produceFacts(question, value);
+      setSaveStatus("saving");
+      Promise.all(facts.map((fact) => persistFact(clientProfileId, fact)))
+        .then(() => {
+          setSaveStatus("saved");
+          window.setTimeout(() => setSaveStatus("idle"), 1800);
+        })
+        .catch(() => setSaveStatus("error"));
     }
     if (step.kind === "reviewing") {
       // Editing a previous answer invalidates whatever came after it (later
@@ -266,7 +290,10 @@ export default function QuestionnairePage() {
 
   return (
     <main>
-      <h1>שאלון אינטראקטיבי — כל צרכי הביטוח</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+        <h1 style={{ margin: 0 }}>שאלון אינטראקטיבי — כל צרכי הביטוח</h1>
+        <SaveIndicator status={saveStatus} />
+      </div>
       <p className="subtitle">
         Milestone 2 + התחלת Milestone 6 (PRD §7, §49, §55) · שאלון אחד מאוחד לכל חמשת המחשבונים. התשובות נשמרות
         באמת ב-PostgreSQL (לא רק בזיכרון הדפדפן) — רענון הדף לא מוחק התקדמות. השאלה הבאה נבחרת דינמית לפי
@@ -325,6 +352,16 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
           → צפה בדוח המלא (§39)
         </Link>
       </p>
+
+      <CoverageOverview
+        computed={computed}
+        rows={[
+          { key: "life", icon: CATEGORY_ICONS.life, label: "ביטוח חיים", coverageRatio: life.coverageRatio },
+          { key: "disability", icon: CATEGORY_ICONS.disability, label: "אבדן כושר עבודה", coverageRatio: disability.coverageRatio },
+          { key: "critical_illness", icon: CATEGORY_ICONS.critical_illness, label: "מחלות קשות", coverageRatio: ci.coverageRatio },
+          { key: "ltc", icon: CATEGORY_ICONS.ltc, label: "סיעודי", coverageRatio: ltc.coverageRatio },
+        ]}
+      />
 
       <ResultCard
         title="ביטוח חיים"

@@ -124,6 +124,7 @@ export default function ReportPage() {
       </div>
 
       <CoverageOverview
+        computed={computed}
         rows={[
           { key: "life", icon: CATEGORY_ICONS.life, label: CATEGORY_LABELS.life, coverageRatio: computed.life.coverageRatio },
           { key: "disability", icon: CATEGORY_ICONS.disability, label: CATEGORY_LABELS.disability, coverageRatio: computed.disability.coverageRatio },

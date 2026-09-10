@@ -186,6 +186,18 @@ or explicitly accept each remaining advisory at that point.
   not built), so cards show category/need/gap/trace but no
   CRITICAL/HIGH/MEDIUM priority badge yet.
 
+## Protection score (`apps/web/lib/protection-score.ts`)
+
+- The single 0–100 "ציון הגנה כולל" hero number is an unweighted average
+  of the 4 gap-producing categories' `coverageRatio` — not a PRD-specified
+  formula. No product/actuarial input decided whether life should weigh
+  more than LTC, or whether a household with dependents should weigh
+  disability higher, etc. — this is the simplest defensible composite,
+  nothing more.
+- The 3 tier thresholds (≥70 "כיסוי טוב", 40–69 "כיסוי חלקי", <40 "כיסוי
+  נמוך") are equally invented round numbers, same status as every other
+  threshold in this file.
+
 ## Scenario Simulator (`apps/web/lib/scenario-simulator.ts`, PRD §23)
 
 - PRD §23 lists 9 adjustable knobs and a fully-interactive slider UI; this
