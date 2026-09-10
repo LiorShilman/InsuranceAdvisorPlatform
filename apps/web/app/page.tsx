@@ -6,6 +6,7 @@ import type { InsuranceCategory } from "@insurance-advisor/domain";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import { ResultCard, CATEGORY_ICONS, formatExact } from "./components/result-card";
 import { HealthModuleCard } from "./components/health-module-card";
+import { personaDisplay } from "../lib/persona-labels";
 import {
   LifeInsuranceCalculator,
   DisabilityInsuranceCalculator,
@@ -202,16 +203,18 @@ export default function PreviewPage() {
           STARTER_ENGINE_CONFIG,
         );
 
+        const display = personaDisplay(fixture.name, fixture.description);
+
         return (
           <details key={fixture.name} className="persona-accordion">
             <summary>
               <span className="persona-avatar" aria-hidden="true">
-                {fixture.name.charAt(0)}
+                {display.name.charAt(0)}
               </span>
               <span>
-                <strong>{fixture.name}</strong>
+                <strong>{display.name}</strong>
                 <span className="fixture-desc" style={{ margin: 0, display: "block" }}>
-                  {fixture.description}
+                  {display.description}
                 </span>
               </span>
             </summary>

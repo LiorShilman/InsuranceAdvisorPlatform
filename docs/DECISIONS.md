@@ -2,6 +2,40 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Persona names on `/`: same English-leak bug, third occurrence
+
+User screenshot of `/`'s persona accordion: titles literally read
+`persona_a_family_with_mortgage`, descriptions were raw English sentences
+("Salaried couple, two children, mortgage..."), and every persona's
+avatar showed the same "p" initial (every `test-fixtures` name starts
+with `persona_`). Third time this exact bug class has shown up this
+session — health-module question text, the report's raw `"divorced"`
+value, now the home page's persona list — always the same root cause:
+an internal/developer-facing identifier or English doc string, meant for
+test code or source comments, rendered directly as user-facing text
+instead of through a translation layer.
+
+`packages/test-fixtures`' `name` is a real, load-bearing identifier
+(`fixtures.test.ts` looks up `f.name === "persona_e_prd_worked_example"`)
+and `description` documents which PRD §5 persona a fixture represents —
+both deliberately in English for developers reading source, neither ever
+meant to reach a user directly. Fixing this properly meant NOT changing
+either field (would break the test lookup and the source documentation)
+— instead added `apps/web/lib/persona-labels.ts`, a small Hebrew
+display-name/description map keyed by the fixture's real `name`, with a
+fallback to the raw value if a fixture is ever added without a
+translation (same "visible-but-ugly beats silently missing" pattern as
+`singleSelectLabelForFact`). `app/page.tsx` now shows the Hebrew display
+name/description and derives the avatar's initial from *that*, not the
+raw identifier — 5 different letters instead of 5 "p"s.
+
+Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145, unchanged
+— `fixtures.test.ts`'s lookup by the real `name` still passes since that
+field itself was never touched), clean `next build`, confirmed live
+against the restarted dev server that the visible `<strong>` persona
+title is now the Hebrew name (the raw `persona_*` string only survives
+as a non-visible `key`/attribute, not as rendered text).
+
 ## 2026-09-10 — Real hydration mismatch in WaterfallChart's `<title>` tooltip
 
 User pasted a live browser console error: a hydration mismatch, React
