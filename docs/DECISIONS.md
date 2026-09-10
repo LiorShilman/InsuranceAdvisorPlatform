@@ -2,6 +2,35 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Coverage overview at the top of the report (radar rejected)
+
+User's originally-suggested form was a radar/spider chart across the 5
+categories. Checked the dataviz skill's `choosing-a-form.md` first — its
+job→form table has no radar option for any job at all, only bar/heatmap
+(magnitude), line/area (trend), grouped/stacked bar (identity/part-whole),
+diverging bar (polarity), dumbbell (before/after). "Compare magnitude
+across categories" — this data's actual job — maps to a plain bar, not a
+radar (radar/spider charts are widely documented to distort area
+perception and make precise comparison harder; the skill's silence on
+them here matches that concern). Built a horizontal-bar overview instead.
+
+1. **New `CoverageOverview` component**, one compact row per category
+   (life/disability/CI/LTC) at the very top of `/report`, before even the
+   executive summary — reuses the *exact same* `.gap-bar-track`/
+   `.gap-bar-existing` bar every `ResultCard` already renders per-category,
+   just composed into one list, not a new visual language.
+2. **Deliberately single-hue (sequential), not status-colored** — sidesteps
+   the whole red/green/amber CVD problem from the last two entries
+   entirely, because the job here is genuinely magnitude comparison
+   ("how covered is each category, relative to the others"), which is
+   sequential's exact use case per the skill, not identity or polarity.
+3. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+   `next build`; confirmed live — `/report`'s raw curl output only shows
+   its loading placeholder (expected: a "use client" page fetching via
+   useEffect, same as every other client page in this app), so verified
+   via the compiled bundle instead, confirming the section's title and
+   the reused bar class both compiled in correctly.
+
 ## 2026-09-10 — Status-badge accessibility: icon shapes, not a hex swap
 
 Follow-up the user asked for directly after the waterfall-chart color

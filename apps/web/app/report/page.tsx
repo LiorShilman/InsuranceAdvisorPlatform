@@ -9,6 +9,7 @@ import { HealthModuleCard } from "../components/health-module-card";
 import { computeAllRecommendations, type ComputedRecommendations } from "../../lib/compute-recommendations";
 import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup";
 import { singleSelectLabelForFact, RECOMMENDATION_CATEGORY_LABELS as CATEGORY_LABELS, FACT_LABELS } from "../../lib/answer-labels";
+import { CoverageOverview } from "../components/coverage-overview";
 
 /**
  * The PRD §39 report structure, built from the SAME persisted Facts the
@@ -121,6 +122,15 @@ export default function ReportPage() {
           "זה ניתוח מדיד מסייע לצרכים המפורטים ואינה מהווה תחליף/שיווק עם בעל רישיון מתאים שיאשר לך המלצה סופית. (PRD §4.3, Educational mode)"
         }
       </div>
+
+      <CoverageOverview
+        rows={[
+          { key: "life", icon: CATEGORY_ICONS.life, label: CATEGORY_LABELS.life, coverageRatio: computed.life.coverageRatio },
+          { key: "disability", icon: CATEGORY_ICONS.disability, label: CATEGORY_LABELS.disability, coverageRatio: computed.disability.coverageRatio },
+          { key: "critical_illness", icon: CATEGORY_ICONS.critical_illness, label: CATEGORY_LABELS.critical_illness, coverageRatio: computed.ci.coverageRatio },
+          { key: "ltc", icon: CATEGORY_ICONS.ltc, label: CATEGORY_LABELS.ltc, coverageRatio: computed.ltc.coverageRatio },
+        ]}
+      />
 
       {/* 1. Executive summary */}
       <section className="card">
