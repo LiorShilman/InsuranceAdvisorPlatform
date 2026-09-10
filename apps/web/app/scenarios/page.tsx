@@ -7,6 +7,7 @@ import type { ComputedRecommendations } from "../../lib/compute-recommendations"
 import { SCENARIO_PRESETS, computeAllScenarios, type ScenarioKey } from "../../lib/scenario-simulator";
 import { RECOMMENDATION_CATEGORY_LABELS, FACT_LABELS } from "../../lib/answer-labels";
 import { formatExact, CATEGORY_ICONS } from "../components/result-card";
+import { EducationalModeBanner } from "../components/educational-mode-banner";
 
 /**
  * PRD §23 Scenario Simulator — see scenario-simulator.ts for the exact,
@@ -83,16 +84,12 @@ export default function ScenariosPage() {
     <main>
       <h1>סימולטור תרחישים</h1>
       <p className="subtitle">
-        PRD §23 · השוואה חיה בין 4 תרחישים על סמך הנתונים האמיתיים שלך — כל תרחיש מפעיל מחדש את אותם מנועי חישוב
-        דטרמיניסטיים (PRD §29, ללא LLM) תחת שתי הנחות שונות: רמת הוצאות רצויה ("lifestyle percentage") וריבית היוון.
-        אף תרחיש אינו "נעול" — כולם מוצגים זה לצד זה.
+        השוואה חיה בין 4 תרחישים על סמך הנתונים האמיתיים שלך — כל תרחיש מפעיל מחדש את אותם מנועי חישוב דטרמיניסטיים
+        (לא מבוססי בינה מלאכותית) תחת שתי הנחות שונות: רמת ההוצאות הרצויה וריבית ההיוון. אף תרחיש אינו "נעול" — כולם
+        מוצגים זה לצד זה.
       </p>
 
-      <div className="banner">
-        {
-          "זה ניתוח מדיד מסייע לצרכים המפורטים ואינה מהווה תחליף/שיווק עם בעל רישיון מתאים שיאשר לך המלצה סופית. (PRD §4.3, Educational mode)"
-        }
-      </div>
+      <EducationalModeBanner />
 
       <section className="card">
         <h2>השוואת פערים לפי תרחיש</h2>
@@ -152,8 +149,8 @@ export default function ScenariosPage() {
           </p>
         ))}
         <p className="missing">
-          הערה: זהו יישום ממוקד של 2 מתוך 9 המשתנים שה-PRD מפרט בסימולטור התרחישים (§23) — רמת הוצאות רצויה וריבית
-          היוון — כ-4 תרחישים קבועים, לא כל 9 המשתנים כסליידרים אינטראקטיביים. הרחבה מלאה נשארת כצעד עתידי נפרד.
+          הערה: כרגע ניתן להתאים רק רמת הוצאות רצויה וריבית היוון, כ-4 תרחישים קבועים — לא כסליידרים חופשיים.
+          התאמה של משתנים נוספים (כגון הכנסת שאיר, רזרבת חינוך, יכולת מימון עצמי) מתוכננת כהרחבה עתידית.
         </p>
       </section>
 

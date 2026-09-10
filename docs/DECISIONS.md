@@ -2,6 +2,49 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Removed PRD/§-section citations from user-facing text
+
+User screenshot + "למה יש ציון ה-PRD במערכת, לא מקצועי" (why is there a
+PRD citation in the system, unprofessional). Fair — this codebase's own
+convention of citing "PRD §N" in code comments (useful for developers
+tracing a feature back to spec) had leaked into actual UI copy: page
+subtitles, the recurring disclaimer banner, section headings, inline
+notes. A user reading "Milestone 3-5 (PRD §12-22 בחלקן, §48)" or
+"(PRD §4.3, Educational mode)" is reading internal spec-tracking
+metadata, not a description of what the page does.
+
+1. **Audited every page's rendered text**, not just a keyword grep —
+   grepping the dev-mode JS bundle directly gives false positives (Next
+   dev builds don't strip comments, so JSDoc citations show up in the
+   bundle's source text without ever reaching the DOM); the real check
+   used Playwright to read `document.body.innerText` from the actual
+   rendered page for `/`, `/questionnaire`, `/coverages`, `/scenarios`,
+   `/report` — all 5 confirmed clean of any `PRD §`/`§N` text.
+2. **New shared `<EducationalModeBanner />`** — the same disclaimer
+   sentence was copy-pasted across 4 pages, each copy ending in the
+   literal "(PRD §4.3, Educational mode)" citation; now one component,
+   rewritten in plain language, fixed once instead of 4 times.
+3. **Rewrote every subtitle** that read like a sprint-status note
+   ("Milestone 2 + התחלת Milestone 6 (PRD §7, §49, §55)") into a plain
+   description of what the page actually does — no PRD/Milestone
+   references, no internal field names (`decisionImpact`, `showWhen`)
+   users have no reason to know.
+4. **Also caught and removed other internal-implementation leakage
+   noticed along the way**, same underlying complaint even without a
+   literal "PRD" prefix: "PostgreSQL", a raw `<code>CoverageDeduplicationEngine</code>`
+   class name, "Budget/Affordability" left untranslated, and a
+   `docs/ASSUMPTIONS.md` file-path reference — all in report/coverages
+   subtitles that a user has no reason to see.
+5. **Found the same problem in my own earlier fix**: the persona
+   display-name/description map added two entries ago
+   (`persona-labels.ts`) still ended each Hebrew description with
+   "(PRD §5, פרסונה A)" — fixed the same pass, confirmed via the
+   Playwright check.
+6. Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+   `next build`; the Playwright DOM check across all 5 pages (not the
+   bundle-source false positive); and 2 full-page screenshots (home,
+   report) eyeballed for anything the automated check might have missed.
+
 ## 2026-09-10 — Theme-toggle button was shifting the whole nav bar on click
 
 User: "עכשיו זה שורה אחת, אבל למה שינוי הכפתור גורם לתזוזה של כל ה

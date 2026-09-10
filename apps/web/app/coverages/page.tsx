@@ -143,8 +143,8 @@ export default function CoveragesPage() {
     <main>
       <h1>פוליסות קיימות ובדיקת כפילויות</h1>
       <p className="subtitle">
-        PRD §18 · הזן כאן כל פוליסת ביטוח קיימת שלך — הנתונים נשמרים ב-PostgreSQL (טבלת <code>coverages</code>) ומוזנים
-        ישירות ל-<code>CoverageDeduplicationEngine</code> האמיתי, לא לדוגמה בלבד. גם דוח §11 (<Link href="/report">/report</Link>) קורא מאותם נתונים.
+        הזן כאן כל פוליסת ביטוח קיימת שלך — הנתונים נשמרים באמת ונבדקים אוטומטית לאיתור חפיפות אפשריות בין פוליסות.
+        אותם נתונים מוצגים גם ב<Link href="/report">דוח המלא</Link>.
       </p>
 
       <section className="wizard-card" style={{ margin: "8px 0 24px", maxWidth: "none" }}>
@@ -320,7 +320,7 @@ export default function CoveragesPage() {
           <span className="card-icon" aria-hidden="true">
             🔎
           </span>
-          <h2>בדיקת כפילויות (PRD §18)</h2>
+          <h2>בדיקת כפילויות</h2>
         </div>
         {!dedup || (coverages && coverages.length < 2) ? (
           <p style={{ color: "var(--muted)" }}>נדרשות לפחות 2 פוליסות כדי לבדוק חפיפה ביניהן.</p>

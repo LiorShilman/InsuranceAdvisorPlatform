@@ -15,6 +15,7 @@ import {
 import { ResultCard, CATEGORY_ICONS, formatExact } from "../components/result-card";
 import { HealthModuleCard } from "../components/health-module-card";
 import { CoverageOverview } from "../components/coverage-overview";
+import { EducationalModeBanner } from "../components/educational-mode-banner";
 import { computeAllRecommendations } from "../../lib/compute-recommendations";
 import { optionsForQuestion } from "../../lib/answer-labels";
 
@@ -295,9 +296,8 @@ export default function QuestionnairePage() {
         <SaveIndicator status={saveStatus} />
       </div>
       <p className="subtitle">
-        Milestone 2 + התחלת Milestone 6 (PRD §7, §49, §55) · שאלון אחד מאוחד לכל חמשת המחשבונים. התשובות נשמרות
-        באמת ב-PostgreSQL (לא רק בזיכרון הדפדפן) — רענון הדף לא מוחק התקדמות. השאלה הבאה נבחרת דינמית לפי
-        decisionImpact ורלוונטיות (showWhen).
+        שאלון אחד מאוחד לכל חמשת סוגי הביטוח. התשובות שלך נשמרות אוטומטית — רענון הדף לא מוחק התקדמות, והשאלה הבאה
+        נבחרת באופן דינמי בהתאם למה שכבר ענית.
       </p>
       <p>
         <Link href="/" style={{ color: "var(--brand)" }}>
@@ -305,11 +305,7 @@ export default function QuestionnairePage() {
         </Link>
       </p>
 
-      <div className="banner">
-        {
-          "זה ניתוח מדיד מסייע לצרכים המפורטים ואינה מהווה תחליף/שיווק עם בעל רישיון מתאים שיאשר לך המלצה סופית. (PRD §4.3, Educational mode)"
-        }
-      </div>
+      <EducationalModeBanner />
 
       {!loaded ? (
         <p>טוען נתונים שמורים...</p>
@@ -349,7 +345,7 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
       <p style={{ fontWeight: 600 }}>סיימת! אלו ההמלצות המחושבות מהתשובות שלך, ממש עכשיו, על פני כל חמשת הביטוחים:</p>
       <p>
         <Link href="/report" style={{ color: "var(--brand)", fontWeight: 600 }}>
-          → צפה בדוח המלא (§39)
+          → צפה בדוח המלא
         </Link>
       </p>
 
@@ -386,11 +382,10 @@ function LiveRecommendations(props: { facts: Fact[]; clientProfileId: string; on
           life.affordability.budgetSupportedCoverage && (
             <p className="missing" style={{ color: "var(--muted)" }}>
               חלופה מוגבלת תקציב: כיסוי נתמך {formatExact(life.affordability.budgetSupportedCoverage.toExactString())} · פער שנותר{" "}
-              {formatExact(life.affordability.remainingUninsuredGap.toExactString())} (§20 — ראה{" "}
+              {formatExact(life.affordability.remainingUninsuredGap.toExactString())} — פירוט מלא ב
               <Link href="/report" style={{ color: "var(--brand)" }}>
-                דוח מלא
+                דוח המלא
               </Link>
-              )
             </p>
           )
         }

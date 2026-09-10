@@ -10,6 +10,7 @@ import { computeAllRecommendations, type ComputedRecommendations } from "../../l
 import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup";
 import { singleSelectLabelForFact, RECOMMENDATION_CATEGORY_LABELS as CATEGORY_LABELS, FACT_LABELS } from "../../lib/answer-labels";
 import { CoverageOverview } from "../components/coverage-overview";
+import { EducationalModeBanner } from "../components/educational-mode-banner";
 
 /**
  * The PRD §39 report structure, built from the SAME persisted Facts the
@@ -95,7 +96,7 @@ export default function ReportPage() {
     <main>
       <div className="no-print">
         <h1>דוח צרכי ביטוח מלא</h1>
-        <p className="subtitle">PRD §39 · נבנה מהנתונים השמורים האמיתיים שלך (PostgreSQL), לא ממוקאפ.</p>
+        <p className="subtitle">נבנה מהנתונים השמורים האמיתיים שלך, לא ממוקאפ.</p>
         <p>
           <Link href="/questionnaire" style={{ color: "var(--brand)" }}>
             ← חזרה לשאלון
@@ -117,11 +118,7 @@ export default function ReportPage() {
         </p>
       </div>
 
-      <div className="banner">
-        {
-          "זה ניתוח מדיד מסייע לצרכים המפורטים ואינה מהווה תחליף/שיווק עם בעל רישיון מתאים שיאשר לך המלצה סופית. (PRD §4.3, Educational mode)"
-        }
-      </div>
+      <EducationalModeBanner />
 
       <CoverageOverview
         computed={computed}
@@ -346,15 +343,12 @@ export default function ReportPage() {
               </tbody>
             </table>
             <p style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-              הצורך המחושב עצמו אינו מוקטן על ידי התקציב (כלל מפורש ב-PRD §20) — זו רק אפשרות נוספת לצדו. יחס
-              ההמרה תקציב→כיסוי אינו תמחור ביטוחי אמיתי (ראו docs/ASSUMPTIONS.md).
+              החלופה הזו אינה מקטינה את הצורך המחושב עצמו — היא רק מוצגת כאפשרות נוספת לצדו. יחס ההמרה תקציב→כיסוי
+              הוא הערכה ראשונית בלבד, ואינו תמחור ביטוחי אמיתי.
             </p>
           </>
         ) : (
-          <p style={{ color: "var(--muted)" }}>
-            לא צוין תקציב חודשי בשאלון — שכבת ה-Budget/Affordability (§20) קיימת ונבדקה (
-            <code>BudgetAffordabilityEngine</code>) ומוצגת כאן ברגע שתענה על השאלה המתאימה בשאלון.
-          </p>
+          <p style={{ color: "var(--muted)" }}>לא צוין תקציב חודשי בשאלון — החלופה המוגבלת-תקציב תוצג כאן ברגע שתענה על השאלה המתאימה.</p>
         )}
       </section>
 
@@ -413,7 +407,7 @@ export default function ReportPage() {
       <section className="card">
         <h2>14. מתודולוגיית חישוב</h2>
         <p>
-          כל מספר בדוח זה מגיע ממחשבון דטרמיניסטי (לא מ-LLM, PRD §29) עם שקיפות חישוב מלאה — לחץ על "איך חושב
+          כל מספר בדוח זה מחושב באמצעות נוסחה קבועה ושקופה — לא נאמד או מנוחש על ידי בינה מלאכותית. לחץ על "איך חושב
           הפער?" בכל כרטיס בסעיף 8 לפירוט השורות והנוסחאות המדויקות.
         </p>
       </section>
@@ -422,8 +416,8 @@ export default function ReportPage() {
       <section className="card">
         <h2>15. גילויים</h2>
         <p>
-          זהו מסמך במצב חינוכי/MVP (PRD §4.3) — אינו ייעוץ פנסיוני/ביטוחי מוסמך. אין להסתמך עליו לצורך קבלת החלטת
-          רכישה ללא בעל רישיון מתאים.
+          זהו מסמך בעל אופי חינוכי בלבד — אינו ייעוץ פנסיוני/ביטוחי מוסמך. אין להסתמך עליו לצורך קבלת החלטת רכישה
+          ללא בעל רישיון מתאים.
         </p>
       </section>
 

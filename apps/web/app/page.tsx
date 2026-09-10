@@ -6,6 +6,7 @@ import type { InsuranceCategory } from "@insurance-advisor/domain";
 import type { HouseholdFixture } from "@insurance-advisor/test-fixtures";
 import { ResultCard, CATEGORY_ICONS, formatExact } from "./components/result-card";
 import { HealthModuleCard } from "./components/health-module-card";
+import { EducationalModeBanner } from "./components/educational-mode-banner";
 import { personaDisplay } from "../lib/persona-labels";
 import {
   LifeInsuranceCalculator,
@@ -50,21 +51,16 @@ export default function PreviewPage() {
     <main>
       <h1>תצוגה מקדימה — מנוע צרכי ביטוח</h1>
       <p className="subtitle">
-        Milestone 3-5 (PRD §12-22 בחלקן, §48) · מחשבוני ביטוח חיים / אבדן כושר עבודה / מחלות קשות / סיעוד, מנוע הערכת
-        מודולי הבריאות, בדיקת כפילויות, מנוע עדיפויות (§19), הרכבת אובייקט המלצה (§21), ותאריך בדיקה הבא (§22, התג
-        הכחול) — על 5 פרופילי בדיקה ישירות מהקוד, ללא שאלון, ללא API, ללא אחסון.
+        חמשת סוגי הביטוח המרכזיים — חיים, אבדן כושר עבודה, מחלות קשות, בריאות פרטי וסיעוד — מחושבים כאן על 5 פרופילי
+        בדיקה קבועים, כולל בדיקת כפילויות כיסוי, דירוג עדיפויות, והמלצה לתאריך הבדיקה הבא.
       </p>
       <p style={{ marginTop: -8 }}>
         <Link href="/questionnaire" style={{ color: "var(--brand)", fontWeight: 600 }}>
-          → נסה את השאלון האינטראקטיבי האמיתי (Milestone 2, §7/§49) — הזן את הנתונים שלך עצמך
+          → נסה את השאלון האינטראקטיבי האמיתי — הזן את הנתונים שלך עצמך
         </Link>
       </p>
 
-      <div className="banner">
-        {
-          "זה ניתוח מדיד מסייע לצרכים המפורטים ואינה מהווה תחליף/שיווק עם בעל רישיון מתאים שיאשר לך המלצה סופית. (PRD §4.3, Educational mode)"
-        }
-      </div>
+      <EducationalModeBanner />
 
       {ALL_HOUSEHOLD_FIXTURES.map((fixture) => {
         const lifeInput = fromHouseholdFixture(fixture, {}, NOW);
@@ -284,7 +280,7 @@ export default function PreviewPage() {
               trace={ciHeadline.trace}
               extraContent={
                 <details>
-                  <summary>השוואת תרחישי משך התאוששות (PRD §14)</summary>
+                  <summary>השוואת תרחישי משך התאוששות</summary>
                   <table className="trace">
                     <tbody>
                       {ciScenarios.map((s) => (
@@ -320,7 +316,7 @@ export default function PreviewPage() {
               trace={ltcHeadline.trace}
               extraContent={
                 <details>
-                  <summary>השוואת תרחישי תוחלת טיפול (PRD §16)</summary>
+                  <summary>השוואת תרחישי תוחלת טיפול</summary>
                   <table className="trace">
                     <tbody>
                       {ltcScenarios.map((s) => (
