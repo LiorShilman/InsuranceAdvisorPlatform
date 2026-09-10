@@ -2,6 +2,33 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-10 — Nav bar: scroll instead of an orphaned wrapped row
+
+User screenshot: with 5 nav links (grew from 3 to 5 across this session's
+feature work) plus the brand and theme toggle, the nav wrapped — but not
+cleanly: `.app-nav-links` itself has its own `flex-wrap: wrap`, so when
+the whole group didn't fit, only the *last* item (the theme toggle) got
+pushed onto its own near-empty second row, reading as broken rather than
+as an intentional two-row layout.
+
+The real constraint: `.app-nav-inner` has a fixed `max-width: 1040px` —
+so this wasn't strictly a "narrow viewport" problem a `max-width` media
+query could reliably key off; the same overflow happens at *any* window
+width once the container itself hits that cap. Fixed by making
+`.app-nav-links` a single row that scrolls horizontally instead of
+wrapping (`flex-wrap: nowrap; overflow-x: auto; min-width: 0` — the
+`min-width: 0` matters: a flex child's browser-default `min-width: auto`
+is what was forcing the container wider than its own max-width and
+triggering the wrap in the first place, not it being merely too eager to
+wrap). `.app-nav-inner` keeps its own `flex-wrap: wrap` as a fallback for
+genuinely narrow screens, where the brand can still drop to its own row
+above a full-width, single-row, scrollable nav — never an orphaned
+single item.
+
+Verified: `tsc --noEmit`, `npm run lint`, `npm test` (145/145), clean
+`next build`, confirmed live that `overflow-x` compiled into the served
+CSS.
+
 ## 2026-09-10 — Final 3 polish items: protection score, save indicator, step animation
 
 Closes out the "raise the product a few more notches" list: a 0–100

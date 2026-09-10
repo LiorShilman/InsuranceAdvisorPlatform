@@ -165,6 +165,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  /* Brand can still drop to its own row above the nav on very narrow
+     screens — but the nav links themselves never wrap (see
+     .app-nav-links below): an orphaned single item on its own half-empty
+     second row reads as broken, a horizontal scroll strip doesn't. */
   flex-wrap: wrap;
 }
 
@@ -176,6 +180,7 @@ body {
   font-size: 1.05rem;
   color: var(--brand-dark);
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .app-brand-mark {
@@ -185,7 +190,19 @@ body {
 .app-nav-links {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  /* Lets this flex child actually shrink below its content's natural
+     width instead of forcing .app-nav-inner wider than its own
+     max-width — the browser default (min-width: auto) is what caused
+     the whole link row to overflow and wrap instead of scroll. */
+  min-width: 0;
+  scrollbar-width: thin;
+}
+
+.app-nav-link,
+.app-nav-links > button {
+  flex-shrink: 0;
 }
 
 .app-nav-link {
@@ -210,6 +227,7 @@ body {
   background: var(--brand-bg);
   color: var(--brand-dark);
 }
+
 
 .app-content main {
   max-width: 1240px;

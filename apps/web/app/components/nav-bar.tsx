@@ -58,14 +58,14 @@ export function NavBar() {
         </Link>
         <nav className="app-nav-links">
           {LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className={`app-nav-link${pathname === link.href ? " active" : ""}`}>
+            <Link key={link.href} href={link.href} className={`app-nav-link${pathname === link.href ? " active" : ""}`} title={link.label}>
               <span aria-hidden="true">{link.icon}</span>
-              {link.label}
+              <span className="app-nav-link-label">{link.label}</span>
             </Link>
           ))}
           <button type="button" className="app-nav-link" onClick={cycleTheme} title={`ערכת נושא: ${themeLabel} (לחץ להחלפה)`}>
             <span aria-hidden="true">{themeIcon}</span>
-            {themeLabel}
+            <span className="app-nav-link-label">{themeLabel}</span>
           </button>
         </nav>
       </div>
