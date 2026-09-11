@@ -18,6 +18,13 @@ import { prisma } from "./prisma";
 export const SESSION_COOKIE = "session_id";
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+// Account-lockout policy (2026-09-11 auth hardening, docs/DECISIONS.md):
+// 5 consecutive failed attempts locks the account for 15 minutes. This is
+// per-account (by email), a second layer beneath the per-IP rate limit in
+// lib/rate-limit.ts.
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
@@ -66,4 +73,33 @@ export function getSessionCookieValue(request: Request): string | undefined {
 /** Convenience: reads the cookie from the request and resolves straight to the session user (or null). */
 export async function getCurrentUser(request: Request): Promise<SessionUser | null> {
   return getUserFromSessionId(getSessionCookieValue(request));
+}
+
+/** True if this account is currently locked out from a prior run of failed logins. */
+export function isLockedOut(user: { lockedUntil: Date | null }): boolean {
+  return user.lockedUntil !== null && user.lockedUntil > new Date();
+}
+
+/**
+ * Call after a failed password check. Increments the counter and, once it
+ * reaches the threshold, sets lockedUntil — resetting the counter so a
+ * lockout is always exactly MAX_FAILED_ATTEMPTS more failures away, not a
+ * one-time trip.
+ */
+export async function recordFailedLogin(userId: string): Promise<void> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { failedLoginAttempts: { increment: 1 } },
+  });
+  if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: 0, lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MS) },
+    });
+  }
+}
+
+/** Call after a successful login — clears any accumulated failure count. */
+export async function resetFailedLogins(userId: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { failedLoginAttempts: 0, lockedUntil: null } });
 }

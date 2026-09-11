@@ -9,6 +9,7 @@
     "start:https": "node server.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
     "@insurance-advisor/calculators": "*",
     "@insurance-advisor/config": "*",
     "@insurance-advisor/questionnaire": "*",
@@ -16,6 +17,7 @@
     "@insurance-advisor/test-fixtures": "*",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
+    "google-auth-library": "^11.0.2",
     "next": "14.2.35",
     "react": "18.3.1",
     "react-dom": "18.3.1"

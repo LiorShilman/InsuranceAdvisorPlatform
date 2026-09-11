@@ -67,14 +67,19 @@ describe("factsToCriticalIllnessInput", () => {
 });
 
 describe("factsToLongTermCareInput", () => {
-  it("maps recognized facts and leaves expectedMonthlyCareCost unset (config fallback applies)", () => {
+  it("maps recognized facts and leaves expectedMonthlyCareCost undefined when not answered (config fallback applies)", () => {
     const input = factsToLongTermCareInput([
       fact("coverage.ltc.existingMonthlyBenefit", 4_000),
       fact("assets.monthlySelfFundingCapacity", 2_000),
     ]);
     expect(input.reliableMonthlyLTCBenefits?.toExactString()).toBe("4000.00");
     expect(input.monthlySelfFundingCapacity?.toExactString()).toBe("2000.00");
-    expect("expectedMonthlyCareCost" in input).toBe(false);
+    expect(input.expectedMonthlyCareCost).toBeUndefined();
+  });
+
+  it("maps ltc.expectedMonthlyCareCost when answered (2026-09-11 questionnaire widening)", () => {
+    const input = factsToLongTermCareInput([fact("ltc.expectedMonthlyCareCost", 12_000)]);
+    expect(input.expectedMonthlyCareCost?.toExactString()).toBe("12000.00");
   });
 });
 

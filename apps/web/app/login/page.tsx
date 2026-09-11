@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { GoogleSignInButton } from "../components/google-sign-in-button";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +11,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setError(null);
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setError(body.error ?? "ההתחברות עם Google נכשלה");
+        return;
+      }
+      router.push("/questionnaire");
+      router.refresh();
+    },
+    [router]
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,6 +77,14 @@ export default function LoginPage() {
         <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: "100%" }}>
           {submitting ? "מתחבר..." : "התחברות"}
         </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0" }}>
+          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          <span className="wizard-help" style={{ margin: 0 }}>
+            או
+          </span>
+          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        </div>
+        <GoogleSignInButton onCredential={handleGoogleCredential} onError={setError} />
         <p style={{ marginTop: 14, fontSize: "0.9rem" }}>
           עדיין אין לך חשבון?{" "}
           <Link href="/register" style={{ color: "var(--brand)" }}>

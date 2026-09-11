@@ -38,7 +38,10 @@ describe("getNextQuestion (PRD §7.2)", () => {
   it("5. answering >0 dependents unlocks the dependent-age and education-goal questions eventually", () => {
     const ids = new Set<string>();
     let answers: Record<string, unknown> = { household_dependents_count: 2 };
-    for (let i = 0; i < 20; i++) {
+    // 30, not 20: must comfortably exceed STARTER_QUESTIONS.length so this
+    // stays robust as the question bank grows (bit by the exact 2026-09-11
+    // widening this comment describes — 20 was already tight before it).
+    for (let i = 0; i < 30; i++) {
       const next = getNextQuestion(STARTER_QUESTIONS, answers);
       if (!next) break;
       ids.add(next.id);

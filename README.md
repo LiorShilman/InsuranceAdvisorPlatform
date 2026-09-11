@@ -20,11 +20,18 @@ history of what was built and why, and `docs/ASSUMPTIONS.md` for every
 invented placeholder number that still needs real product/actuarial/legal
 review.
 
-Real multi-user accounts exist now (email/password, `/register` +
-`/login`), replacing the single hardcoded demo profile — every signed-in
-user gets their own `ClientProfile`, and every data API enforces
-ownership (a session can only ever read/write its own data). Still
-missing: the LLM explanation layer (§29), the admin console (§51), and
+Real multi-user accounts exist now (email/password or Google Sign-In,
+`/register` + `/login`), replacing the single hardcoded demo profile —
+every signed-in user gets their own `ClientProfile`, and every data API
+enforces ownership (a session can only ever read/write its own data).
+Accounts also have real hardening now: lockout after repeated failed
+logins, per-IP rate limiting, and a password-strength check (see
+docs/DECISIONS.md and docs/ASSUMPTIONS.md — password reset/email
+verification are still deliberately deferred, pending a mail service).
+A scoped LLM explanation layer (§29) now exists — on-demand, per
+recommendation category, strictly "explain the already-computed
+number," never a source of new numbers or advice (`/api/explain`,
+`lib/llm-explain.ts`). Still missing: the admin console (§51), and
 Product Matching/real pricing (§50, explicitly Phase 2).
 
 ## Layout
@@ -89,12 +96,18 @@ household's shared self-signed cert in before the first deploy.
 
 ## Next steps
 
-- Widen the questionnaire's ~20-question starter bank (still short of the
-  PRD's illustrative "~70 questions", §7.1) — only worth doing alongside
-  new calculator inputs that actually consume the answers, not as
-  unconsumed facts.
-- The LLM explanation-only layer (§29) — needs a provider/API-key decision.
-- OAuth/social sign-in — email/password only for now.
+- Widen the questionnaire further (still short of the PRD's illustrative
+  "~70 questions", §7.1) — only worth doing alongside new calculator
+  inputs that actually consume the answers, not as unconsumed facts; see
+  docs/DECISIONS.md for what closed a real gap (`ltc_expected_monthly_care_cost`)
+  vs. what was deliberately left for later (Employment disability-coverage
+  facts, currently unwired to any calculator).
+- Password-reset flow + email verification for the auth system — needs a
+  mail-sending service decision (SMTP/SendGrid/Resend/etc.), deliberately
+  deferred; see docs/REGULATORY-TODO.md.
+- Extend the LLM explanation layer (§29) to its other allowed uses
+  (free-text fact extraction/§30, report summarization) — only "explain
+  deterministic result" is built so far.
 - Revisit the Next.js-Route-Handlers-as-API decision (docs/DECISIONS.md)
   once background-jobs/audit-write-path needs grow past what that
   comfortably expresses.

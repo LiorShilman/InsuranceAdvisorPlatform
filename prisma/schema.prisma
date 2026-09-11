@@ -29,7 +29,17 @@ model User {
   displayName  String?  @map("display_name")
   role         String   @default("client")
   // bcrypt hash — real per-user accounts (previously one hardcoded demo user, see lib/demo-profile.ts's removal in docs/DECISIONS.md).
-  passwordHash String   @map("password_hash")
+  // Optional: an account created via Google Sign-In only (never set a local
+  // password) has no hash — login-by-password checks for this explicitly.
+  passwordHash String?  @map("password_hash")
+  // Google's "sub" claim, set once this account is linked to a Google
+  // identity (either created via Google Sign-In, or an existing
+  // email/password account that later signed in with the matching email).
+  googleId     String?  @unique @map("google_id")
+  // Account-lockout counters (2026-09-11 auth hardening) — reset on a
+  // successful login, incremented on a failed one; see lib/auth.ts.
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
 
   clientProfiles ClientProfile[]
   consents       Consent[]

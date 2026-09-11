@@ -2,6 +2,120 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-11 — Auth hardening, Google Sign-In, LLM explanation layer (§29), questionnaire widening
+
+Four features requested together; grouped in one entry since they landed in
+one pass and touch overlapping files (`prisma/schema.prisma`, `lib/auth.ts`).
+
+1. **Auth hardening — the no-email-required slice only**, per the user's
+   explicit choice (deferred password-reset/email-verification, which need
+   a mail-sending service the project doesn't have configured):
+   - **Account lockout**: `User` gained `failedLoginAttempts`/`lockedUntil`.
+     5 consecutive failed logins locks the account for 15 minutes
+     (`lib/auth.ts`'s `recordFailedLogin`/`resetFailedLogins`/`isLockedOut`).
+     A locked account gets a distinct 423 response — deliberately still not
+     revealing *why* beyond "too many attempts", same email-enumeration
+     discipline as the existing generic login-error message.
+   - **Per-IP rate limiting** (`lib/rate-limit.ts`) on `/api/auth/login`,
+     `/api/auth/register`, `/api/auth/google` — an in-memory sliding window,
+     not Redis-backed, because this runs as a single PM2 fork instance
+     (`ecosystem.config.cjs`'s `instances: 1`); resets on process restart,
+     which is fine since it's a second, coarser layer under the per-account
+     lockout above, not the primary defense.
+   - **Password complexity** (`lib/password-policy.ts`): length ≥ 8 (already
+     enforced) plus at least one letter and one digit, plus a small
+     hand-picked common-password blocklist. Deliberately not a real
+     breach-list check (e.g. HIBP's k-anonymity API) — that's an external
+     service call, same category of thing as email that was explicitly
+     deferred this pass.
+2. **Google Sign-In**, reusing the OAuth Client ID already registered for
+   `ls-financial-advisor` (`19125517221-...apps.googleusercontent.com`,
+   found in that project's `src/environments/environment.ts`) — the user
+   confirmed they already have it and want it reused, not a new one
+   created. Two things done differently from how that sibling project uses
+   the same client ID, both deliberate:
+   - **Server-side signature verification** (`lib/google-auth.ts`, via
+     `google-auth-library`'s `OAuth2Client.verifyIdToken`), not a
+     client-side-only JWT decode. `ls-financial-advisor`'s
+     `google-sso.component.ts` decodes the ID token's payload in the
+     browser and trusts it outright without checking the signature —
+     acceptable there only insofar as nothing server-side ever consumes
+     that trust; this app creates real sessions and touches real data from
+     it, so the unverified-decode shortcut isn't safe to copy. No client
+     *secret* is needed for this — verifying an ID token only needs the
+     client ID as the expected audience.
+   - **Google's own rendered button** (`app/components/google-sign-in-button.tsx`),
+     not the custom-styled transparent-overlay-on-top-of-a-real-button trick
+     `google-sso.component.ts` uses — simpler, no CSS layering needed, and
+     this app has no existing button style that specifically needs
+     preserving under it.
+   - `User.passwordHash` became optional and gained `googleId` (unique) —
+     an account created via Google Sign-In alone has no local password;
+     `/api/auth/login` explicitly checks for a null hash and returns the
+     same generic error rather than crashing on `bcrypt.compare(password,
+     null)`. Signing in with Google using an email that already has a
+     password account links `googleId` onto the existing row (both methods
+     then reach the same account) rather than erroring or creating a
+     duplicate.
+   - **Action required from the user, not verifiable from this session**:
+     the OAuth Client's "Authorized JavaScript origins" in Google Cloud
+     Console must include this app's actual origins
+     (`https://shilmanlior2608.ddns.net:37000`, `https://localhost:37000`,
+     `http://localhost:4310` for dev) or Google Identity Services will
+     reject the sign-in with an origin-mismatch error client-side. Not
+     something an API key/secret can route around — it's enforced by
+     Google based on the page's actual origin.
+3. **LLM explanation layer (§29)**, scoped to exactly what §29's "Allowed"
+   list permits and nothing from "Forbidden" — see `lib/llm-explain.ts`'s
+   own header comment for the full boundary reasoning. Concretely: "explain
+   deterministic result" only (not fact extraction/§30, not free-text
+   question paraphrasing — both real §29-allowed uses, just not built this
+   pass). Anthropic (`claude-sonnet-5`) chosen over the OpenAI key already
+   configured in `ls-financial-advisor`, at the user's own request to pick
+   "whichever fits our system better" — this project's own tooling and
+   conventions are Claude-based throughout, and Anthropic's SDK/API is the
+   more natural fit here than porting the sibling project's OpenAI
+   integration pattern.
+   - **`/api/explain`** recomputes the requested category's `Recommendation`
+     + `CalculationTrace` itself, server-side, from the caller's own
+     persisted `Fact` rows (same ownership-check pattern as every other
+     data route) — it never trusts a client-supplied recommendation object.
+     A client can only say *which* category to explain, never what the
+     numbers in it are.
+   - **Deliberate narrowing of the PRD's own tool contract**: §29's literal
+     contract sends `allowedFacts: []` (raw Facts) to the LLM. This
+     implementation sends only the already-computed Recommendation/trace/
+     assumptions/missingFacts — never a raw `Fact` row, and never anything
+     from `HealthDisclosure`. Keeps sensitive data (health disclosures,
+     granular income facts) from ever leaving the server for a third-party
+     API, at the cost of the explanation being unable to reference a fact
+     that didn't end up aggregated into the trace. Documented as an
+     assumption, not silently done — see docs/ASSUMPTIONS.md.
+   - **On-demand, not automatic**: `ExplainButton` only calls `/api/explain`
+     on click, once per category per click — visiting `/report` doesn't
+     silently trigger 4 LLM calls on every page load.
+   - System prompt (in Hebrew, since the output must be) mirrors §29's
+     English one point-for-point: never alter a number, never invent an
+     insurer/product/policy term, never infer medical facts, state unknowns
+     as unknown, always append the required disclosure verbatim.
+4. **Questionnaire widened by exactly one question** —
+   `ltc_expected_monthly_care_cost` — not padded toward the PRD's
+   illustrative "~70 questions" figure with unconsumed filler. Audited
+   every `facts-to-*-input.ts` adapter first: every fact key a calculator
+   actually reads already had a question producing it, with one flagged
+   exception — `facts-to-ltc-input.ts`'s own comment said
+   `expectedMonthlyCareCost` was "intentionally left unset — no question
+   collects it", always falling back to the LTC calculator's generic
+   config-level cost assumption (§16). That's exactly the kind of gap
+   worth closing (a highly region/care-level-dependent real number that a
+   single fixed config guess represents poorly) and exactly the kind not
+   worth manufacturing — no other calculator had an equivalent flagged,
+   unconsumed input waiting. Employment.hasPensionDisabilityCoverage/
+   hasEmployerCoverage (Prisma schema fields that exist but were never
+   wired into any Fact or calculator) were considered and deliberately
+   *not* added as questions this pass — asking for data nothing consumes
+   yet would violate the same principle this section opens with.
+
 ## 2026-09-11 — Deployed via PM2 + a self-terminated HTTPS server (homelab-deploy skill)
 
 User asked for "PM2 ו-IIS כמו ב-FinWise" (PM2 and IIS, like FinWise).

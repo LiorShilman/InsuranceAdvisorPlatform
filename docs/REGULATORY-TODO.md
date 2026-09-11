@@ -41,15 +41,40 @@ a real user: replace it with actual Product Matching/insurer pricing
 (PRD §3.2 Phase 2, §50), or clearly and prominently disclose that the
 figure is illustrative, not a quote — never present it as a real premium.
 
-## Auth hardening not yet implemented (added 2026-09-11)
+## Auth hardening — partially done (updated 2026-09-11)
 
-Real accounts exist (`apps/web/lib/auth.ts`) but the minimum-viable
-slice only: no password-reset flow, no email verification, no
-rate-limiting on login attempts, no account lockout, no
-password-complexity/breach-list check beyond an 8-character floor. None
-of this blocks local/demo use, but all of it is expected before this
-touches a real user's actual insurance/financial data in production —
-see docs/ASSUMPTIONS.md.
+Real accounts exist (`apps/web/lib/auth.ts`). As of 2026-09-11:
+account lockout, per-IP rate limiting, and password complexity
+(length + letter + digit + a small common-password blocklist) are
+implemented — see docs/DECISIONS.md's auth-hardening entry. **Still
+missing, deliberately deferred pending a mail-sending service the
+project doesn't have configured**: password-reset flow, email
+verification. Also still missing: a real breach-list check (e.g. HIBP)
+beyond the hand-picked blocklist. None of this blocks local/demo use,
+but the email-dependent items are expected before this touches a real
+user's actual insurance/financial data in production — see
+docs/ASSUMPTIONS.md.
+
+## Google Sign-In — third-party data sharing (added 2026-09-11)
+
+Signing in with Google shares the user's Google account email/name with
+this app (via Google's own consent flow) — standard OAuth, but worth a
+line in whatever privacy notice eventually gets written per the
+"Privacy and sensitive-data obligations" checklist item above. The
+OAuth Client ID currently reused is registered under a Google Cloud
+project set up for the sibling `ls-financial-advisor` app, not one
+specific to this product — its consent-screen branding reflects that
+until/unless the user sets up a dedicated one.
+
+## LLM explanation layer — third-party API, PRD §29 (added 2026-09-11)
+
+`/api/explain` sends a subset of a user's computed insurance-need data
+(Recommendation figures, calculation trace, assumptions, missing-facts
+list — never raw Facts, never HealthDisclosure) to Anthropic's API to
+generate a plain-language explanation. This is a real transfer of
+personal financial data to a third-party processor and belongs in
+whatever data-processing/sub-processor disclosure the "Privacy and
+sensitive-data obligations" item above eventually produces.
 
 ## Feature flags not yet implemented (PRD §4.1)
 

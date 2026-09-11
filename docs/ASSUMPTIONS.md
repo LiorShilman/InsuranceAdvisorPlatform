@@ -222,13 +222,68 @@ or explicitly accept each remaining advisory at that point.
   activity — an invented round number, not a security-reviewed policy.
 - bcrypt cost factor 10 (the `bcryptjs` default-adjacent choice) — not
   benchmarked against this app's actual expected load.
-- No password-reset flow, no email verification, no rate-limiting on
-  login attempts, no account lockout — a real deployment needs all of
-  these; this is intentionally the minimum viable real-accounts slice
-  (register, login, logout, per-user data isolation), not a
-  production-hardened auth system. See docs/REGULATORY-TODO.md.
-- No password-strength check beyond a length floor (8 characters) — no
-  complexity/breach-list check.
+- **Updated 2026-09-11** (see docs/DECISIONS.md's auth-hardening entry):
+  lockout (5 failed attempts / 15 minutes), per-IP rate limiting, and a
+  letter+digit+blocklist password check are now real. Still deliberately
+  not implemented — needs a mail-sending service, explicitly deferred by
+  the user rather than by default: no password-reset flow, no email
+  verification. Also still not implemented: a real breach-list check
+  (e.g. HIBP) beyond the small hand-picked common-password blocklist in
+  `lib/password-policy.ts`. See docs/REGULATORY-TODO.md.
+- The in-memory rate limiter (`lib/rate-limit.ts`) assumes exactly one
+  running instance (`ecosystem.config.cjs`'s `instances: 1`) — it would
+  under-count attempts across multiple instances/processes. Not an issue
+  today; would need a shared store (Redis, or a DB-backed counter like the
+  per-account lockout already is) if this app ever scales to more than one
+  process.
+
+## Google Sign-In (`apps/web/lib/google-auth.ts`, `app/api/auth/google/route.ts`)
+
+- Reuses the OAuth Client ID already registered for the sibling
+  `ls-financial-advisor` project, at the user's explicit choice — this
+  app has no OAuth consent screen/branding of its own configured under
+  that Google Cloud project; whatever app name/logo that consent screen
+  shows during sign-in is whatever was set up for the other project.
+- A Google account's email is trusted as already-verified
+  (`email_verified` on the ID token) and used to link/create the local
+  `User` row directly — no separate confirmation step. Standard practice
+  for this flow, but worth naming as a trust assumption.
+- No account-linking UI for the reverse direction (an existing Google-only
+  account later wanting to also set a local password) — not built, not
+  requested.
+
+## LLM explanation layer (`apps/web/lib/llm-explain.ts`, PRD §29)
+
+- Model: `claude-sonnet-5`, chosen over the OpenAI integration already
+  configured in `ls-financial-advisor`, at the user's request to pick
+  "whichever fits our system better" — this project's own tooling is
+  Claude-based throughout. Not benchmarked against Haiku for this
+  specific task; Sonnet was chosen for output-quality headroom on Hebrew
+  prose, not because Haiku was tested and found lacking.
+- Only "explain deterministic result" (§29's own phrase) is implemented.
+  §29 also allows paraphrasing a question, free-text fact extraction
+  (§30), and report summarization — none of those are built this pass.
+- Sends a narrower payload than §29's literal tool contract — see
+  `lib/llm-explain.ts`'s header comment and docs/DECISIONS.md. Never a raw
+  `Fact` row or anything from `HealthDisclosure`; only the already-computed
+  Recommendation/CalculationTrace/assumptions/missingFacts. Means the
+  explanation can't reference a fact that didn't make it into the trace,
+  a real (if narrow) accuracy tradeoff made for the sake of not sending
+  sensitive rows to a third-party API.
+- No caching — every button click is a fresh API call/cost. Fine at
+  today's scale; worth revisiting (e.g. cache by
+  clientProfileId+category+factsHash) if usage grows.
+- No token/cost budget or per-user rate limit on `/api/explain` beyond the
+  same per-IP limiter every auth route gets — a signed-in user could click
+  the button many times in a row and generate many billed API calls.
+
+## Questionnaire widening (2026-09-11)
+
+- Exactly one new question (`ltc_expected_monthly_care_cost`) — see
+  docs/DECISIONS.md for why the other apparent gap
+  (`Employment.hasPensionDisabilityCoverage`/`hasEmployerCoverage`,
+  Prisma fields that exist in the schema but feed no `Fact`/calculator)
+  was deliberately *not* turned into questions this pass.
 
 ## Regulatory
 

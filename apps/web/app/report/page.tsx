@@ -12,6 +12,7 @@ import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup"
 import { singleSelectLabelForFact, RECOMMENDATION_CATEGORY_LABELS as CATEGORY_LABELS, FACT_LABELS } from "../../lib/answer-labels";
 import { CoverageOverview } from "../components/coverage-overview";
 import { EducationalModeBanner } from "../components/educational-mode-banner";
+import { ExplainButton } from "../components/explain-button";
 
 /**
  * The PRD §39 report structure, built from the SAME persisted Facts the
@@ -76,7 +77,7 @@ export default function ReportPage() {
     return computeAllRecommendations(facts, clientProfileId, new Date());
   }, [facts, clientProfileId]);
 
-  if (!facts || !computed || !coverages) {
+  if (!facts || !computed || !coverages || !clientProfileId) {
     return (
       <main>
         <p>טוען דוח...</p>
@@ -246,6 +247,7 @@ export default function ReportPage() {
           ]}
           missingFacts={computed.life.result.missingFacts}
           trace={computed.life.trace}
+          extraContent={<ExplainButton clientProfileId={clientProfileId} category="life" />}
         />
         <ResultCard
           title="ביטוח אבדן כושר עבודה"
@@ -265,6 +267,7 @@ export default function ReportPage() {
           ]}
           missingFacts={computed.disability.result.missingFacts}
           trace={computed.disability.trace}
+          extraContent={<ExplainButton clientProfileId={clientProfileId} category="disability" />}
         />
         <ResultCard
           title="ביטוח מחלות קשות"
@@ -284,6 +287,7 @@ export default function ReportPage() {
           ]}
           missingFacts={computed.ci.result.missingFacts}
           trace={computed.ci.trace}
+          extraContent={<ExplainButton clientProfileId={clientProfileId} category="critical_illness" />}
         />
         <ResultCard
           title="ביטוח סיעודי"
@@ -302,6 +306,7 @@ export default function ReportPage() {
           ]}
           missingFacts={computed.ltc.result.missingFacts}
           trace={computed.ltc.trace}
+          extraContent={<ExplainButton clientProfileId={clientProfileId} category="ltc" />}
         />
       </section>
 
