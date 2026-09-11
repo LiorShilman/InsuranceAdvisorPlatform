@@ -73,6 +73,20 @@ households, no account needed) or `http://localhost:4310/register` to
 create a real account and use the persisted, interactive flow
 (`/questionnaire`, `/coverages`, `/scenarios`, `/report`).
 
+## Deployment
+
+Runs as a standalone PM2-managed process that terminates its own HTTPS
+(see `apps/web/server.mjs` and `ecosystem.config.cjs`, and
+`docs/DECISIONS.md` for why this shape rather than an IIS reverse proxy):
+
+```bash
+npm run build --workspace apps/web
+pm2 start ecosystem.config.cjs --env production   # https://<host>:37000
+```
+
+`apps/web/certs/{cert,key}.pem` (gitignored) must exist — copy the
+household's shared self-signed cert in before the first deploy.
+
 ## Next steps
 
 - Widen the questionnaire's ~20-question starter bank (still short of the

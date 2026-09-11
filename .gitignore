@@ -5,3 +5,7 @@ dist/
 .env
 coverage/
 .DS_Store
+
+# Deployment (PM2 + shared HTTPS cert) — see homelab-deploy skill.
+apps/web/certs/
+logs/

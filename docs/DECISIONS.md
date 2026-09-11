@@ -2,6 +2,64 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-11 — Deployed via PM2 + a self-terminated HTTPS server (homelab-deploy skill)
+
+User asked for "PM2 ו-IIS כמו ב-FinWise" (PM2 and IIS, like FinWise).
+Surveying the actual machine state first (per the deploy skill's own
+method) found FinWise itself isn't a complete working example to copy —
+its static files sit in `C:\inetpub\wwwroot\FinWise`, but `appcmd list
+app` shows no registered IIS Application for it; the reverse-proxy
+`web.config` referencing its Express backend exists but was never wired
+up as a live IIS site. Flagged this to the user rather than silently
+copying a possibly-broken reference, and asked which real, working
+pattern to follow instead.
+
+1. **Pattern B (standalone PM2 process, own HTTPS), not IIS reverse
+   proxy** — user's explicit choice, and the better technical fit
+   regardless: Next.js bundles frontend + API + SSR into one process
+   (unlike FinWise/RiseUp's Vite-static + separate-Express split), so
+   there's no clean "static half for IIS, dynamic half proxied" division
+   — the *entire* app would need proxying through IIS's URL
+   Rewrite/ARR for every route, not just `/api/*`. A standalone process
+   terminating its own HTTPS (matching Photo2Print/RiseUp, both fully
+   working, registered examples) avoids that fragility entirely.
+2. **New `apps/web/server.mjs`** — Next.js's own `next start` only
+   speaks plain HTTP; this wraps Next's request handler with Node's
+   `https` module instead, mirroring RiseUp's exact
+   `fs.existsSync(cert) ? https : http` fallback pattern. Copied the
+   **shared** household cert/key from `Photo2Print/backend/certs/` (same
+   self-signed cert every other HTTPS-terminating process on this
+   machine reuses) into `apps/web/certs/` — gitignored, never committed,
+   same as every other project's copy of it.
+3. **New root `ecosystem.config.cjs`** (root `package.json` has `"type":
+   "module"`, so `.cjs` is required for the CommonJS `module.exports`
+   PM2 expects — same reason FinWise's is also `.cjs`) — `cwd` points
+   into `apps/web` (an absolute path via `__dirname`, not a bare relative
+   one, since the ecosystem file itself lives at the monorepo root, one
+   level up from where the app actually runs); log paths are likewise
+   absolute for the same reason.
+4. **Port 37000**, chosen by checking `Get-NetTCPConnection -State
+   Listen` for the machine's actual free ports first, not guessed — the
+   next free round number after this machine's existing 30000-36000
+   cluster. New inbound firewall rule for it (confirmed via the user's
+   explicit choice of this deployment shape, which named the resulting
+   URL directly).
+5. **Wired into `C:\Users\LiorS\start_servers.py`'s `SERVERS` dict**
+   (read before editing, per the skill) so it starts/restarts alongside
+   every other PM2-managed project on this machine.
+6. Verified for real: clean `next build`, `pm2 start ecosystem.config.cjs
+   --env production`, confirmed clean startup in `pm2 logs` (no errors),
+   then a full functional pass directly against the deployed instance —
+   registered a real account over HTTPS on port 37000, fetched its
+   profile, loaded `/questionnaire` (200) — through the actual deployed
+   process, not the dev server. Test account deleted afterward.
+7. **Router port-forwarding for port 37000 is NOT something this session
+   can do or verify** — per the skill, this is the one step that
+   requires the user's own action if they want the app reachable from
+   outside this local network (a phone on cellular data, etc.); ports
+   already in the existing 30000-36000 cluster are presumably already
+   forwarded, a brand new port is not, until the user does it.
+
 ## 2026-09-11 — Real multi-user accounts (email/password), replacing the single demo profile
 
 User's explicit choice among several "what's next" options. Every page
