@@ -216,6 +216,20 @@ or explicitly accept each remaining advisory at that point.
   round numbers chosen to make the 4 scenarios visibly distinct, nothing
   more.
 
+## Authentication (`apps/web/lib/auth.ts`)
+
+- Session lifetime: 30 days, fixed, not configurable, not renewed on
+  activity — an invented round number, not a security-reviewed policy.
+- bcrypt cost factor 10 (the `bcryptjs` default-adjacent choice) — not
+  benchmarked against this app's actual expected load.
+- No password-reset flow, no email verification, no rate-limiting on
+  login attempts, no account lockout — a real deployment needs all of
+  these; this is intentionally the minimum viable real-accounts slice
+  (register, login, logout, per-user data isolation), not a
+  production-hardened auth system. See docs/REGULATORY-TODO.md.
+- No password-strength check beyond a length floor (8 characters) — no
+  complexity/breach-list check.
+
 ## Regulatory
 
 - No disclaimer/compliance copy, license fields, or regulatory feature

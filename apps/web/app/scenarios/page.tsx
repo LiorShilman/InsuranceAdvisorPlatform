@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Fact } from "@insurance-advisor/shared";
 import type { ComputedRecommendations } from "../../lib/compute-recommendations";
 import { SCENARIO_PRESETS, computeAllScenarios, type ScenarioKey } from "../../lib/scenario-simulator";
@@ -31,6 +32,7 @@ function gapFor(computed: ComputedRecommendations, category: Category["key"]) {
 }
 
 export default function ScenariosPage() {
+  const router = useRouter();
   const [facts, setFacts] = useState<Fact[] | null>(null);
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
 
@@ -38,6 +40,10 @@ export default function ScenariosPage() {
     let cancelled = false;
     (async () => {
       const profileRes = await fetch("/api/profile");
+      if (profileRes.status === 401) {
+        router.push("/login");
+        return;
+      }
       const { clientProfileId: id } = (await profileRes.json()) as { clientProfileId: string };
       if (cancelled) return;
       setClientProfileId(id);

@@ -20,10 +20,12 @@ history of what was built and why, and `docs/ASSUMPTIONS.md` for every
 invented placeholder number that still needs real product/actuarial/legal
 review.
 
-Still missing: authentication (there is exactly one hardcoded "demo"
-profile per database — see `apps/web/lib/demo-profile.ts`), the LLM
-explanation layer (§29), the admin console (§51), and Product
-Matching/real pricing (§50, explicitly Phase 2).
+Real multi-user accounts exist now (email/password, `/register` +
+`/login`), replacing the single hardcoded demo profile — every signed-in
+user gets their own `ClientProfile`, and every data API enforces
+ownership (a session can only ever read/write its own data). Still
+missing: the LLM explanation layer (§29), the admin console (§51), and
+Product Matching/real pricing (§50, explicitly Phase 2).
 
 ## Layout
 
@@ -31,8 +33,11 @@ Matching/real pricing (§50, explicitly Phase 2).
 apps/web               Next.js app — fixture-driven preview at `/`, a real
                         interactive questionnaire at `/questionnaire`,
                         existing-policy entry + duplicate check at
-                        `/coverages`, a full 16-section report at
-                        `/report`, plus a small API (`app/api/profile`,
+                        `/coverages`, a scenario simulator at
+                        `/scenarios`, a full 16-section report at
+                        `/report`, email/password accounts (`/login`,
+                        `/register`), plus a small API
+                        (`app/api/auth/*`, `app/api/profile`,
                         `app/api/facts`, `app/api/coverages`) backed by
                         Prisma/Postgres
 packages/shared         Money, CalculationTrace, Assumption, Fact (PRD §8, §25)
@@ -64,8 +69,9 @@ npm run preview     # starts apps/web on the fixed port http://localhost:4310
 ```
 
 Open `http://localhost:4310` for the fixture-driven preview (5 hardcoded
-households) or `http://localhost:4310/questionnaire` for the real,
-persisted, interactive flow.
+households, no account needed) or `http://localhost:4310/register` to
+create a real account and use the persisted, interactive flow
+(`/questionnaire`, `/coverages`, `/scenarios`, `/report`).
 
 ## Next steps
 
@@ -74,8 +80,7 @@ persisted, interactive flow.
   new calculator inputs that actually consume the answers, not as
   unconsumed facts.
 - The LLM explanation-only layer (§29) — needs a provider/API-key decision.
-- Real authentication, replacing `lib/demo-profile.ts`'s single hardcoded
-  profile.
+- OAuth/social sign-in — email/password only for now.
 - Revisit the Next.js-Route-Handlers-as-API decision (docs/DECISIONS.md)
-  once auth/background-jobs/audit-write-path needs grow past what that
+  once background-jobs/audit-write-path needs grow past what that
   comfortably expresses.

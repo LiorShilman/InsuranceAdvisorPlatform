@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { getCurrentUser } from "../../../lib/auth";
+import { clientProfileBelongsToUser } from "../../../lib/client-profile";
 
 /**
  * Real CRUD over the `coverages` table (prisma/schema.prisma) — the
@@ -55,15 +57,24 @@ function serializeCoverage(row: {
 }
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser(request);
+  if (!user) return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+
   const clientProfileId = new URL(request.url).searchParams.get("clientProfileId");
   if (!clientProfileId) {
     return NextResponse.json({ error: "clientProfileId is required" }, { status: 400 });
+  }
+  if (!(await clientProfileBelongsToUser(clientProfileId, user.id))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const rows = await prisma.coverage.findMany({ where: { clientProfileId }, orderBy: { createdAt: "asc" } });
   return NextResponse.json({ coverages: rows.map(serializeCoverage) });
 }
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser(request);
+  if (!user) return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+
   const body = await request.json();
   const {
     clientProfileId,
@@ -93,6 +104,9 @@ export async function POST(request: Request) {
 
   if (!clientProfileId || !category || !subtype || !insuredPersonId) {
     return NextResponse.json({ error: "clientProfileId, category, subtype and insuredPersonId are required" }, { status: 400 });
+  }
+  if (!(await clientProfileBelongsToUser(clientProfileId, user.id))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   if (amount === undefined && monthlyBenefit === undefined) {
     return NextResponse.json({ error: "at least one of amount or monthlyBenefit is required" }, { status: 400 });
@@ -124,9 +138,18 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const user = await getCurrentUser(request);
+  if (!user) return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+
   const id = new URL(request.url).searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+  // No clientProfileId is supplied here (only the coverage's own id) — look up which
+  // profile it belongs to before deleting, same ownership discipline as every other route.
+  const existing = await prisma.coverage.findUnique({ where: { id } });
+  if (!existing || !(await clientProfileBelongsToUser(existing.clientProfileId, user.id))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   await prisma.coverage.delete({ where: { id } });
   return NextResponse.json({ ok: true });

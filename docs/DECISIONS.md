@@ -2,6 +2,88 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-11 — Real multi-user accounts (email/password), replacing the single demo profile
+
+User's explicit choice among several "what's next" options. Every page
+and API route until now scoped to exactly one hardcoded `demo-user@local.insurance-advisor`
+row (`lib/demo-profile.ts`) — deliberate for a single-viewer local
+preview, but a real blocker for anyone else to use this without seeing
+one shared, minglable dataset.
+
+1. **Hand-rolled, not a framework** (no NextAuth/Auth.js): matches this
+   project's existing pattern of preferring small, fully-understood
+   pieces over a heavier dependency (same reasoning already used for
+   Route Handlers over a separate API framework). `bcryptjs` (pure JS,
+   no native compile step — matters on Windows) for password hashing;
+   a real, revocable, DB-backed `AuthSession` row (not a bare signed
+   JWT) for sessions — deleting the row logs the user out everywhere
+   immediately, the same "never trust a client-held token alone"
+   instinct behind this app's audited-exact-value discipline elsewhere.
+   Named `AuthSession`, not `Session`, to avoid colliding with the
+   already-existing `QuestionnaireSession` model (a different concept).
+2. **No Edge Middleware for route protection** — Prisma's query engine
+   needs the Node.js runtime; Next.js Middleware runs on the Edge
+   runtime by default, so validating a session there would mean either
+   a weaker "cookie merely exists" check or adding Prisma Accelerate (a
+   hosted dependency this project doesn't have). Instead: every
+   protected page already calls `/api/profile` as its first action —
+   that route now requires a valid session and returns 401 when there
+   isn't one, and each page's existing fetch just checks for 401 and
+   redirects to `/login`. Zero new request, zero new infrastructure
+   layer, full server-side (Node.js runtime) validation.
+3. **Every data API re-verifies ownership**, not just authentication — a
+   `clientProfileId` in a request body/query is client-supplied, so a
+   signed-in user could otherwise pass a *different* user's profile id
+   and read/write through it. New `clientProfileBelongsToUser()` check
+   added to every `/api/facts` and `/api/coverages` handler (including
+   `DELETE`, which only takes a coverage's own `id` — looked up to find
+   which profile it belongs to first). Verified for real, not just by
+   inspection: registered two live users via the running dev server,
+   confirmed each gets their own profile, confirmed user A reading or
+   writing through user B's `clientProfileId` gets a real 403 and B's
+   data is untouched.
+4. **`/` stays public, deliberately** — the fixture-driven 5-persona
+   preview touches no real user data (only `packages/test-fixtures`), so
+   it doesn't need an account; every other page (`/questionnaire`,
+   `/coverages`, `/scenarios`, `/report`) does.
+5. **Migration reset, not an in-place backfill**: adding a required
+   `passwordHash` to `User` meant the one existing demo-user row (3 trivial
+   test facts: marital status, dependents count, monthly expenses) had no
+   valid value for it. Given the local dev database's only data was
+   explicitly documented everywhere as a throwaway single-profile
+   placeholder, ran `prisma migrate reset` for a clean slate rather than
+   inventing a migration path for data that was never meant to survive
+   this exact architecture change — flagged to the user rather than done
+   silently.
+6. **New `AuthSession` table**, `User.passwordHash` (required, bcrypt
+   hash). `lib/demo-profile.ts` deleted outright, replaced by
+   `lib/client-profile.ts`'s `getOrCreateClientProfileForUser(userId)` +
+   `clientProfileBelongsToUser(clientProfileId, userId)`. New
+   `lib/auth.ts` (`hashPassword`/`verifyPassword`/`createSession`/
+   `deleteSession`/`getUserFromSessionId`/`getCurrentUser`/
+   `getSessionCookieValue`) and 4 new routes: `/api/auth/register`,
+   `/api/auth/login` (deliberately the same generic error whether the
+   email doesn't exist or the password is wrong — telling an attacker
+   which one failed leaks which emails are registered), `/api/auth/logout`,
+   `/api/auth/me` (used by the nav bar). New `/login`/`/register` pages;
+   nav bar now shows the signed-in user's sign-out control or a sign-in
+   link, re-checked on every route change.
+7. Verified beyond the usual cycle: `tsc -b` + `apps/web`'s own
+   `tsc --noEmit`, `npm run lint`, `npm test` (145/145 — auth touches no
+   `packages/*` code), a clean `next build`; then a real end-to-end pass
+   against the restarted dev server — unauthenticated 401, register 2
+   users, cross-user 403 on both read and write (facts *and* coverages),
+   wrong-password rejection, duplicate-email rejection, login, `/api/auth/me`,
+   logout, and a `/questionnaire` redirect-to-`/login` check — all via
+   direct API calls, *and* separately via a real headless-browser
+   registration through the actual `/register` form (Playwright, per the
+   `run` skill's browser-driven pattern), confirming the nav bar's
+   sign-out control appears and sign-out actually returns to `/login`.
+   All 3 test accounts created during verification were deleted
+   afterward — the database was empty of any user before this feature
+   and is empty of any *test* user now; a real account still needs to be
+   created via `/register` to use the app going forward.
+
 ## 2026-09-10 — Removed PRD/§-section citations from user-facing text
 
 User screenshot + "למה יש ציון ה-PRD במערכת, לא מקצועי" (why is there a

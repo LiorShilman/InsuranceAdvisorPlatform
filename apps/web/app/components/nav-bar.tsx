@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "5 פרופילים", icon: "🗂️" },
@@ -24,7 +24,9 @@ function applyTheme(choice: ThemeChoice) {
 
 export function NavBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [theme, setTheme] = useState<ThemeChoice>("system");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Per-viewer preference only — never affects other visitors, so localStorage is fine here.
   useEffect(() => {
@@ -34,6 +36,30 @@ export function NavBar() {
       applyTheme(saved);
     }
   }, []);
+
+  // Re-checks on every navigation (pathname change) so signing in/out on one
+  // page updates the nav immediately, without a full reload.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : { user: null }))
+      .then((body: { user: { email: string } | null }) => {
+        if (!cancelled) setUserEmail(body.user?.email ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setUserEmail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  async function handleSignOut() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    setUserEmail(null);
+    router.push("/login");
+    router.refresh();
+  }
 
   function cycleTheme() {
     const next: ThemeChoice = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
@@ -67,6 +93,17 @@ export function NavBar() {
             <span aria-hidden="true">{themeIcon}</span>
             <span className="app-nav-link-label">{themeLabel}</span>
           </button>
+          {userEmail ? (
+            <button type="button" className="app-nav-link" onClick={handleSignOut} title={`מחובר/ת בתור ${userEmail} — לחץ להתנתקות`}>
+              <span aria-hidden="true">👤</span>
+              <span className="app-nav-link-label">התנתקות</span>
+            </button>
+          ) : (
+            <Link href="/login" className={`app-nav-link${pathname === "/login" ? " active" : ""}`}>
+              <span aria-hidden="true">👤</span>
+              <span className="app-nav-link-label">התחברות</span>
+            </Link>
+          )}
         </nav>
       </div>
     </header>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Fact } from "@insurance-advisor/shared";
 import {
   STARTER_QUESTIONS,
@@ -186,6 +187,7 @@ function SaveIndicator(props: { status: SaveStatus }) {
 }
 
 export default function QuestionnairePage() {
+  const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   // Ordered list of question ids actually asked, and a read head into it —
   // see resolveWizardStep's doc comment for the full model. pointer ===
@@ -196,13 +198,17 @@ export default function QuestionnairePage() {
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
-  // Real persistence (PRD §55: "no recommendation loss on page refresh") — backed by the
-  // actual Postgres schema (prisma/schema.prisma), not browser-only state. One demo profile
-  // per local database (no auth yet) — see lib/demo-profile.ts.
+  // Real persistence, per-account now — backed by the actual Postgres schema
+  // (prisma/schema.prisma), not browser-only state. A 401 here means there's
+  // no valid session — /api/profile now requires real authentication.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const profileRes = await fetch("/api/profile");
+      if (profileRes.status === 401) {
+        router.push("/login");
+        return;
+      }
       const { clientProfileId: id } = (await profileRes.json()) as { clientProfileId: string };
       if (cancelled) return;
       setClientProfileId(id);

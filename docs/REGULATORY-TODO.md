@@ -41,6 +41,16 @@ a real user: replace it with actual Product Matching/insurer pricing
 (PRD §3.2 Phase 2, §50), or clearly and prominently disclose that the
 figure is illustrative, not a quote — never present it as a real premium.
 
+## Auth hardening not yet implemented (added 2026-09-11)
+
+Real accounts exist (`apps/web/lib/auth.ts`) but the minimum-viable
+slice only: no password-reset flow, no email verification, no
+rate-limiting on login attempts, no account lockout, no
+password-complexity/breach-list check beyond an 8-character floor. None
+of this blocks local/demo use, but all of it is expected before this
+touches a real user's actual insurance/financial data in production —
+see docs/ASSUMPTIONS.md.
+
 ## Feature flags not yet implemented (PRD §4.1)
 
 `needsAnalysis`, `personalizedRecommendation`, `productComparison`,

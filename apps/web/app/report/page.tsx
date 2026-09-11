@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Fact } from "@insurance-advisor/shared";
 import { STARTER_ENGINE_CONFIG } from "@insurance-advisor/config";
 import { ResultCard, CATEGORY_ICONS, formatExact, PRIORITY_BAND_LABELS } from "../components/result-card";
@@ -38,6 +39,7 @@ function formatFactValue(value: unknown, factKey?: string): string {
 
 
 export default function ReportPage() {
+  const router = useRouter();
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [facts, setFacts] = useState<Fact[] | null>(null);
   const [coverages, setCoverages] = useState<ApiCoverage[] | null>(null);
@@ -46,6 +48,10 @@ export default function ReportPage() {
     let cancelled = false;
     (async () => {
       const profileRes = await fetch("/api/profile");
+      if (profileRes.status === 401) {
+        router.push("/login");
+        return;
+      }
       const { clientProfileId: id } = (await profileRes.json()) as { clientProfileId: string };
       if (cancelled) return;
       setClientProfileId(id);

@@ -22,17 +22,36 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  email       String   @unique
-  displayName String?  @map("display_name")
-  role        String   @default("client")
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  email        String   @unique
+  displayName  String?  @map("display_name")
+  role         String   @default("client")
+  // bcrypt hash — real per-user accounts (previously one hardcoded demo user, see lib/demo-profile.ts's removal in docs/DECISIONS.md).
+  passwordHash String   @map("password_hash")
 
   clientProfiles ClientProfile[]
   consents       Consent[]
+  authSessions   AuthSession[]
 
   @@map("users")
+}
+
+// Named AuthSession, not Session, to avoid colliding with the existing
+// QuestionnaireSession model (a different concept — one questionnaire-
+// filling session, not a login session). A real, revocable server-side
+// session (not a bare signed JWT) — deleting the row logs the user out
+// everywhere immediately.
+model AuthSession {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
 }
 
 model ClientProfile {

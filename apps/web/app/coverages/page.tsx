@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Coverage } from "@insurance-advisor/domain";
 import { formatExact } from "../components/result-card";
 import { computeDeduplication, type ApiCoverage } from "../../lib/compute-dedup";
@@ -55,6 +56,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function CoveragesPage() {
+  const router = useRouter();
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [primaryPersonId, setPrimaryPersonId] = useState<string | null>(null);
   const [coverages, setCoverages] = useState<ApiCoverage[] | null>(null);
@@ -66,6 +68,10 @@ export default function CoveragesPage() {
     let cancelled = false;
     (async () => {
       const profileRes = await fetch("/api/profile");
+      if (profileRes.status === 401) {
+        router.push("/login");
+        return;
+      }
       const profile = (await profileRes.json()) as { clientProfileId: string; primaryPersonId: string };
       if (cancelled) return;
       setClientProfileId(profile.clientProfileId);
