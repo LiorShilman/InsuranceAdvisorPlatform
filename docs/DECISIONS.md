@@ -2,6 +2,45 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-12 — Live site broke: running the "before calling anything done" build checklist invalidated the running PM2 process's chunks
+
+The user pasted a real browser console from the live production instance
+(`https://shilmanlior2608.ddns.net:37000/questionnaire`):
+`ChunkLoadError: Loading chunk 393 failed`, two `_next/static/chunks/*.js`
+requests returning 400, and a resulting minified React error #423
+(hydration failure, downstream of the chunk failure — not a separate bug).
+
+Root cause: earlier in this session, `npm run build --workspace apps/web`
+was run twice as part of CLAUDE.md's own mandatory "before calling
+anything done" checklist, verifying the questionnaire-widening change
+above. That command writes to `apps/web/.next` — the **same** directory
+`insurance-advisor-platform`'s already-running PM2 process (uptime 2h at
+the time, 0 restarts) serves from, per this repo's deploy shape (README's
+"Deployment" section: one PM2 process running straight out of this repo,
+not a separate build/deploy artifact). A fresh `next build` assigns new
+chunk hashes and deletes the old chunk files; the running Node process
+kept serving pages referencing the pre-rebuild hashes until restarted, so
+any browser that had the page open (or loaded it between the rebuild and
+the restart) requested chunk files that no longer existed on disk — a 400,
+surfacing to the user as `ChunkLoadError`. Nothing wrong with the
+questionnaire change itself; this was purely a side effect of verifying it
+correctly (per this same file's own instructions) without the one
+additional step that verification against *this specific* repo's
+production shape requires.
+
+Fixed by following the documented redeploy procedure that was sitting
+right there in the README the whole time and simply wasn't run:
+`npm run build --workspace apps/web` again (to guarantee `.next` exactly
+matches current source) → `pm2 restart insurance-advisor-platform
+--update-env` → `pm2 save`. Verified live: `/questionnaire` returns 200 and
+the current chunk (`393-9698f118999d9b4d.js`) actually serves 200, not 400.
+Added an explicit warning directly under the build-checklist command in
+CLAUDE.md so a future session doesn't repeat this — the fix isn't "don't
+run the build," the checklist requires it and correctly so (it catches
+real type errors typecheck alone doesn't, per the existing comment there);
+the fix is "always restart PM2 immediately after, on this repo
+specifically, checklist or not."
+
 ## 2026-09-12 — README correction: the PRD does not set a "~70 questions" target
 
 Direct user question ("did I mean the 7 conditional questions, or the 70

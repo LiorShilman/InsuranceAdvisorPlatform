@@ -61,6 +61,25 @@ npm test             # vitest run — 146+ tests
 npm run build --workspace apps/web   # catches type errors typecheck alone doesn't (see docs/DECISIONS.md)
 ```
 
+**This build command writes to the exact same `apps/web/.next` the live PM2
+process serves from — there is no separate build output for "just
+checking".** Running it while `insurance-advisor-platform` is up (which it
+normally is) immediately invalidates the running process's chunk
+references, even if you never intended to deploy: the browser still has
+the old page's HTML (old chunk hashes) loaded, the new build's `.next`
+folder has different hashes and has deleted the old chunk files, and the
+next lazy-loaded chunk fetch 400s → `ChunkLoadError` for any real user with
+the site open, not just a next reload. This actually happened, live, in
+production — see docs/DECISIONS.md's 2026-09-12 "live site broke" entry.
+**If this checklist's build step runs against this repo and
+`insurance-advisor-platform` is currently online, immediately follow with
+`pm2 restart insurance-advisor-platform --update-env && pm2 save`**
+regardless of whether you consider this a "real deploy" — running the
+build at all is what breaks the live site, restarting is what fixes it,
+and there's no reason not to since the new build is presumably what you
+want live anyway (if it weren't, the fix is `git stash`/checkout + rebuild
++ restart again, not leaving the mismatch in place).
+
 For anything touching a live user-facing flow (auth, a new page, a button),
 verify against the actual running app — `curl`/Playwright against
 `https://localhost:37000` (production, via PM2) or `npm run preview`
