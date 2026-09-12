@@ -2,6 +2,26 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-12 — README correction: the PRD does not set a "~70 questions" target
+
+Direct user question ("did I mean the 7 conditional questions, or the 70
+from the README?" -> "I meant the 70") prompted rereading §7.1 verbatim
+instead of trusting the README's own paraphrase of it. The PRD's *only*
+mention of "70" is its opening line: "אין מטרה 70 שאלות אחת אחרי השנייה" —
+"there is no goal of 70 questions one after another." That's a rejection of
+a large fixed-length sequential form, stated immediately before §7.1
+introduces the adaptive `Question` schema and (§7.2) `getNextQuestion` —
+the whole point of which is asking only what's actually needed, not working
+through a target list. README's "Next steps" had been citing "~70
+questions" as a size the questionnaire was "still short of" — treating a
+line that explicitly disclaims a large question count as if it were a
+positive target, backwards from what it actually says. Corrected the
+wording: the current ~31-question bank (24 + 7 health modules, every fact
+consumed by a real calculator per the 2026-09-11/2026-09-12 audits above)
+is what the PRD is actually asking for, not a shortfall — widening further
+should keep being driven by new consumed calculator inputs, never by
+trying to approach any particular count.
+
 ## 2026-09-12 — Questionnaire widened by 2 questions: CI recovery duration, LTC expected duration; real bug found live testing it: "skip" never actually skipped
 
 Same audit discipline as the 2026-09-11 widening entry below (only add a

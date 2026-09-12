@@ -97,14 +97,23 @@ household's shared self-signed cert in before the first deploy.
 
 ## Next steps
 
-- Widen the questionnaire further (still short of the PRD's illustrative
-  "~70 questions", §7.1) — only worth doing alongside new calculator
-  inputs that actually consume the answers, not as unconsumed facts; see
-  docs/DECISIONS.md for what closed real gaps so far
-  (`ltc_expected_monthly_care_cost`; CI recovery duration + LTC expected
-  duration, both previously hardcoded in the live flow) vs. what was
-  deliberately left alone (Employment disability-coverage Prisma fields —
-  dead schema, and duplicative of a question that already exists).
+- Widen the questionnaire further, but only alongside new calculator inputs
+  that actually consume the answers, never as unconsumed facts. **Not**
+  toward a "~70 questions" target — §7.1's only mention of that number is
+  "אין מטרה 70 שאלות אחת אחרי השנייה" ("there is no goal of 70 questions
+  one after another"), i.e. the PRD explicitly *rejects* a large fixed
+  question count as a goal, right before introducing the adaptive
+  `getNextQuestion` selection mechanism whose whole point is asking only
+  what's actually needed. An earlier version of this bullet cited "~70
+  questions" as something to grow toward — a misreading of that line,
+  corrected 2026-09-12 (see docs/DECISIONS.md). The current ~31-question
+  bank (24 + 7 health modules), each fact real-consumed by a calculator, is
+  what the PRD is actually asking for — not a gap. See docs/DECISIONS.md
+  for what closed real gaps so far (`ltc_expected_monthly_care_cost`; CI
+  recovery duration + LTC expected duration, both previously hardcoded in
+  the live flow) vs. what was deliberately left alone (Employment
+  disability-coverage Prisma fields — dead schema, and duplicative of a
+  question that already exists).
 - Password-reset flow + email verification for the auth system — needs a
   mail-sending service decision (SMTP/SendGrid/Resend/etc.), deliberately
   deferred; see docs/REGULATORY-TODO.md.
