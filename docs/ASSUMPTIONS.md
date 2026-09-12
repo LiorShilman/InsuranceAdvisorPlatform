@@ -157,9 +157,14 @@ something concrete to start tuning.
   result goes through `config.careAssumptions.assumedMonthlyLTCCareCost`
   (already documented as an invented placeholder), same as the
   fixture-driven page.
-- The live `/questionnaire` flow fixes CI's recovery duration at 6 months
-  and LTC's expected duration at 3 years — no UI lets a live user compare
-  scenarios the way the fixture page's expandable tables do.
+- **Updated 2026-09-12** (see docs/DECISIONS.md): the live `/questionnaire`
+  flow no longer fixes CI's recovery duration / LTC's expected duration —
+  `ci_expected_recovery_months`/`ltc_expected_duration_years` now let a
+  user override either, defaulting to the same 6 months / 3 years as
+  before when left blank. Still no UI lets a live user compare *several*
+  durations side by side the way the fixture page's expandable tables do
+  — this is a single overridable number per calculator, not the full
+  scenario-comparison experience.
 - Each `factsTo*Input` adapter only recognizes its own exact fact keys —
   none of them are a general-purpose Facts interpreter that would
   tolerate a differently-named fact meaning the same thing.
@@ -284,6 +289,26 @@ or explicitly accept each remaining advisory at that point.
   (`Employment.hasPensionDisabilityCoverage`/`hasEmployerCoverage`,
   Prisma fields that exist in the schema but feed no `Fact`/calculator)
   was deliberately *not* turned into questions this pass.
+
+## Questionnaire widening (2026-09-12)
+
+- Two new questions closing the gap named above: `ci_expected_recovery_months`
+  and `ltc_expected_duration_years` — see docs/DECISIONS.md. Both default
+  to the same 6-month/3-year figures the live flow already hardcoded
+  before this change when left blank, so this is not a new invented
+  number, just the existing one made overridable and documented at its
+  actual source (`DEFAULT_RECOVERY_DURATION_MONTHS` in
+  `facts-to-critical-illness-input.ts`, `DEFAULT_LTC_EXPECTED_DURATION_YEARS`
+  in `facts-to-ltc-input.ts`) instead of a bare literal at the
+  `compute-recommendations.ts` call site.
+- `Employment.hasPensionDisabilityCoverage`/`hasEmployerCoverage` remain
+  unwired — re-checked this pass; the existing
+  `coverage_disability_existing_monthly` question ("כולל ביטוח דרך הפנסיה,
+  ביטוח פרטי, וכיסוי מעסיק יחד") already collects the substance of what
+  those two booleans would add (a combined net monthly disability-income
+  figure), so wiring them up now would duplicate rather than improve
+  accuracy. Nothing in `apps/web` creates or reads an `Employment` row at
+  all — genuinely dead schema, not just an unconsumed fact.
 
 ## Regulatory
 

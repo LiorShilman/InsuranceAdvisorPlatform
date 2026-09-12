@@ -60,6 +60,25 @@ describe("getNextQuestion (PRD §7.2)", () => {
     }
     expect(getNextQuestion(STARTER_QUESTIONS, answers)).toBeUndefined();
   });
+
+  it("7. a skipped optional question (recorded as an explicit `undefined`) is never offered again — found live 2026-09-12, see docs/DECISIONS.md", () => {
+    const answers = { household_marital_status: "single", person_protection_horizon_override: undefined };
+    const next = getNextQuestion(STARTER_QUESTIONS, answers);
+    expect(next?.id).not.toBe("person_protection_horizon_override");
+  });
+
+  it("8. a wizard that only ever skips optional questions still reaches 'nothing left to ask' — the actual end-to-end shape of the bug in #7", () => {
+    let answers: Record<string, unknown> = {};
+    for (let i = 0; i < 40; i++) {
+      const next = getNextQuestion(STARTER_QUESTIONS, answers);
+      if (!next) break;
+      // Always skip (undefined) when allowed to — the UI's skip button is only
+      // ever offered for a statically non-required question, so mirror that
+      // exact gate here rather than the runtime requiredWhen check.
+      answers = { ...answers, [next.id]: next.required ? (next.answerType === "boolean" ? false : next.answerType === "single_select" ? "single" : 1) : undefined };
+    }
+    expect(getNextQuestion(STARTER_QUESTIONS, answers)).toBeUndefined();
+  });
 });
 
 describe("completionScore (PRD §9 applied to the questionnaire)", () => {

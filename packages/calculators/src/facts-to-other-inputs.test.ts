@@ -64,6 +64,14 @@ describe("factsToCriticalIllnessInput", () => {
     expect(input.reliableMonthlyIncomeDuringRecovery?.toExactString()).toBe("4000.00");
     expect(input.existingCriticalIllnessCoverage?.toExactString()).toBe("100000.00");
   });
+
+  it("defaults recoveryDurationMonths to 6 when ci.expectedRecoveryDurationMonths wasn't answered", () => {
+    expect(factsToCriticalIllnessInput([]).recoveryDurationMonths).toBe(6);
+  });
+
+  it("uses ci.expectedRecoveryDurationMonths when answered (2026-09-12 questionnaire widening)", () => {
+    expect(factsToCriticalIllnessInput([fact("ci.expectedRecoveryDurationMonths", 12)]).recoveryDurationMonths).toBe(12);
+  });
 });
 
 describe("factsToLongTermCareInput", () => {
@@ -80,6 +88,14 @@ describe("factsToLongTermCareInput", () => {
   it("maps ltc.expectedMonthlyCareCost when answered (2026-09-11 questionnaire widening)", () => {
     const input = factsToLongTermCareInput([fact("ltc.expectedMonthlyCareCost", 12_000)]);
     expect(input.expectedMonthlyCareCost?.toExactString()).toBe("12000.00");
+  });
+
+  it("defaults expectedDurationYears to 3 when ltc.expectedDurationYears wasn't answered", () => {
+    expect(factsToLongTermCareInput([]).expectedDurationYears).toBe(3);
+  });
+
+  it("uses ltc.expectedDurationYears when answered (2026-09-12 questionnaire widening)", () => {
+    expect(factsToLongTermCareInput([fact("ltc.expectedDurationYears", 5)]).expectedDurationYears).toBe(5);
   });
 });
 

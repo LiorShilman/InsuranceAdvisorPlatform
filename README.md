@@ -100,9 +100,11 @@ household's shared self-signed cert in before the first deploy.
 - Widen the questionnaire further (still short of the PRD's illustrative
   "~70 questions", §7.1) — only worth doing alongside new calculator
   inputs that actually consume the answers, not as unconsumed facts; see
-  docs/DECISIONS.md for what closed a real gap (`ltc_expected_monthly_care_cost`)
-  vs. what was deliberately left for later (Employment disability-coverage
-  facts, currently unwired to any calculator).
+  docs/DECISIONS.md for what closed real gaps so far
+  (`ltc_expected_monthly_care_cost`; CI recovery duration + LTC expected
+  duration, both previously hardcoded in the live flow) vs. what was
+  deliberately left alone (Employment disability-coverage Prisma fields —
+  dead schema, and duplicative of a question that already exists).
 - Password-reset flow + email verification for the auth system — needs a
   mail-sending service decision (SMTP/SendGrid/Resend/etc.), deliberately
   deferred; see docs/REGULATORY-TODO.md.

@@ -30,9 +30,11 @@ import type { CalculationTrace } from "@insurance-advisor/shared";
  * Shared computation shared by `/questionnaire`'s live results and
  * `/report` — factored out so the ~150-line calculator/priority/
  * recommendation wiring exists in exactly one place instead of being
- * copy-pasted a third time. Fixed scenario parameters (CI: 6 months, LTC:
- * 3 years) — same simplification noted in docs/DECISIONS.md for the
- * questionnaire flow.
+ * copy-pasted a third time. CI's recovery duration and LTC's expected
+ * duration are read from `ciInput`/`ltcInput` (optional user-supplied
+ * facts, defaulting to 6 months / 3 years — see facts-to-critical-illness-
+ * input.ts / facts-to-ltc-input.ts) rather than fixed here, as of the
+ * 2026-09-12 questionnaire widening (docs/DECISIONS.md).
  */
 
 const lifeCalculator = new LifeInsuranceCalculator();
@@ -74,10 +76,10 @@ export function computeAllRecommendations(
   const disability = disabilityCalculator.calculate(disabilityInput, engineConfig);
 
   const ciInput = factsToCriticalIllnessInput(facts);
-  const ci = criticalIllnessCalculator.calculate({ ...ciInput, recoveryDurationMonths: 6 }, engineConfig);
+  const ci = criticalIllnessCalculator.calculate(ciInput, engineConfig);
 
   const ltcInput = factsToLongTermCareInput(facts);
-  const ltc = longTermCareCalculator.calculate({ ...ltcInput, expectedDurationYears: 3 }, engineConfig);
+  const ltc = longTermCareCalculator.calculate(ltcInput, engineConfig);
 
   const health = healthModuleAssessor.assess(factsToHealthInput(facts), engineConfig);
 
@@ -176,7 +178,7 @@ export function computeAllRecommendations(
       needAmount: ltc.result.capitalNeed,
       existingAmount: Money.zero(),
       gapAmount: ltc.result.capitalNeed,
-      horizon: { type: "years", value: 3 },
+      horizon: { type: "years", value: ltcInput.expectedDurationYears },
       reasonCodes: ltc.result.reasonCodes,
       reviewTriggers: ltc.result.reviewTriggers,
       missingFacts: ltc.result.missingFacts,

@@ -42,12 +42,28 @@ function isRequired(question: Question, answers: Record<string, unknown>): boole
   return question.required;
 }
 
+/**
+ * A question the wizard has already asked and gotten a response for —
+ * "response" including an explicit skip, not just a real value. Deliberately
+ * key-presence, not `answers[id] !== undefined`: `handleAnswer` in
+ * `questionnaire/page.tsx` records a skipped optional question as
+ * `{ [id]: undefined }` (a real key, an undefined value — "asked and
+ * declined", not "never asked"), and a value-based check can't tell those
+ * apart. Found live 2026-09-12 (see docs/DECISIONS.md): with the old
+ * value-based check, `getNextQuestion` treated a skipped question as still
+ * unanswered, so it kept winning the next-question ranking and reappeared
+ * forever — clicking "skip" never actually advanced the wizard past it.
+ */
+function hasResponse(question: Question, answers: Record<string, unknown>): boolean {
+  return Object.prototype.hasOwnProperty.call(answers, question.id);
+}
+
 export function getNextQuestion(questions: Question[], answers: Record<string, unknown>): Question | undefined {
   let best: Question | undefined;
   let bestScore = -Infinity;
 
   for (const question of questions) {
-    if (answers[question.id] !== undefined) continue;
+    if (hasResponse(question, answers)) continue;
     if (!isRelevant(question, answers)) continue;
 
     const score = question.decisionImpact - ANSWER_TYPE_BURDEN[question.answerType];

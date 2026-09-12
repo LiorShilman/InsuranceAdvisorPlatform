@@ -2,6 +2,103 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-12 — Questionnaire widened by 2 questions: CI recovery duration, LTC expected duration; real bug found live testing it: "skip" never actually skipped
+
+Same audit discipline as the 2026-09-11 widening entry below (only add a
+question alongside a calculator input that actually consumes it — never
+unconsumed filler). Re-ran the audit: every fact key any `facts-to-*-input.ts`
+adapter reads already had a producing question, **except** two scenario
+parameters the live flow (`apps/web/lib/compute-recommendations.ts`) had
+been hardcoding at the call site since it was written — `recoveryDurationMonths:
+6` for the critical-illness calculator and `expectedDurationYears: 3` for
+the LTC calculator. Both calculators already fully support these as real
+input fields (§14/§16 explicitly call them "scenario parameters with a
+range", and both calculators already expose a `calculateScenarios` helper
+and a named option set — `RECOVERY_DURATION_OPTIONS_MONTHS`,
+`LTC_DURATION_SCENARIOS_YEARS` — used by the fixture-driven `/` page's
+comparison tables); only the live, persisted `/questionnaire` flow never
+let a real user override them, per docs/ASSUMPTIONS.md's own "no UI lets a
+live user compare scenarios" note. That's the same shape of gap as last
+pass's `ltc_expected_monthly_care_cost`: a fixed guess standing in for a
+number a household plausibly has an opinion on, with a calculator already
+wired to receive it.
+
+- Two new **optional**, `number`-typed questions: `ci_expected_recovery_months`
+  (`ci.expectedRecoveryDurationMonths`) and `ltc_expected_duration_years`
+  (`ltc.expectedDurationYears`) — plain numbers with a soft `range`
+  validation warning (not `single_select` over the named option sets above;
+  a free number avoids hardcoding the UI to exactly those 5/5 discrete
+  choices, and reuses the same "number question + skip button" pattern
+  already used everywhere else in the bank, no new UI code needed).
+- `facts-to-critical-illness-input.ts` / `facts-to-ltc-input.ts` no longer
+  return `Omit<..., "recoveryDurationMonths"|"expectedDurationYears">` —
+  they now resolve the full calculator input themselves, defaulting to the
+  same 6 months / 3 years the call site used to hardcode
+  (`DEFAULT_RECOVERY_DURATION_MONTHS`, `DEFAULT_LTC_EXPECTED_DURATION_YEARS`)
+  when the question was left blank. Deliberately **not** run through the
+  missingFacts/Assumption bookkeeping `resolveMoneyWithConfigDefault` gives
+  `expectedMonthlyCareCost` — same as before this change, these are
+  scenario knobs the calculator always requires a concrete value for, not
+  personal unknowns the report should flag as missing data.
+  `calculateScenarios`'s own `Omit<...>` signature (used only by the
+  fixture-driven `/` page, via a separate demo adapter) is untouched.
+- `compute-recommendations.ts` no longer hardcodes the LTC recommendation's
+  `horizon` to `{ type: "years", value: 3 }` either — it now reflects
+  whatever `ltcInput.expectedDurationYears` actually resolved to. `/report`
+  doesn't currently render a horizon badge for LTC the way it does for life
+  (`טווח הגנה: X שנים`) — the duration a user actually gets is visible via
+  the calculation trace's own line label instead (`long-term-care-
+  calculator.ts` already interpolates it: "הון נדרש לכיסוי סיעודי (N שנות
+  תוחלת)", verified live to read "3 שנות תוחלת" when left blank). This
+  change keeps the `Recommendation.horizon` field itself honest for
+  whatever else reads it (`ReviewScheduler`, any future UI), rather than
+  leaving a `Recommendation` object whose `horizon` silently disagreed with
+  the number its own `gapAmount`/`calculationTraceId` were computed from.
+
+**Real bug found live-testing the above** (per CLAUDE.md's own rule: verify
+against the actual running app, not just unit tests, for anything touching
+a live user-facing flow): clicking a question's "דלג (שאלה לא חובה)" skip
+button never actually skipped it — the exact same question reappeared as
+soon as the wizard moved on. Root cause in
+`packages/questionnaire/src/question-selector.ts`'s `getNextQuestion`:
+its "already handled, don't offer again" check was
+`answers[question.id] !== undefined`, but `handleAnswer` in
+`questionnaire/page.tsx` records a skip as `{ [id]: undefined }` — a real
+key, an explicit undefined value. That check can't distinguish "asked and
+explicitly declined" from "never asked at all", so a skipped question kept
+winning the next-question ranking (nothing about it had changed) and
+reappeared indefinitely. In the worst case — every relevant question
+skipped in sequence — the wizard could never reach "done" at all, since
+skipped questions never left the candidate pool for `getNextQuestion` to
+exhaust.
+- Caught with an automated Playwright-driven walk through `/register` ->
+  `/questionnaire` -> `/report` (Edge, connected over CDP — `chromium-cli`/
+  bundled Playwright weren't available in this session, and Edge's own
+  `--remote-debugging-pipe` launch path playwright-core defaults to failed
+  silently on this Edge build; launching Edge manually with
+  `--remote-debugging-port` and `connectOverCDP`ing to it worked). The
+  script skipped `household_youngest_dependent_age` (statically
+  `required: false`, dynamically required once dependents > 0) and hit the
+  exact loop described above, 60 iterations without progressing — not a
+  contrived edge case, the very first optional-but-conditionally-relevant
+  question the bank asks.
+- Fixed by making the exclusion check key-presence-based
+  (`Object.prototype.hasOwnProperty.call(answers, question.id)`, named
+  `hasResponse`) instead of value-based — a skipped question is now
+  correctly "handled" and excluded from future ranking, while
+  `completionScore`'s separate, still value-based check is untouched (it's
+  measuring a different thing: whether required-and-relevant questions have
+  a *real* answer, not just any response — a skipped required question
+  should still count as incomplete, and does).
+- Regression-tested (`question-selector.test.ts` #7-8): a single skipped
+  optional question is never re-offered, and a full run that always skips
+  whichever question isn't statically required still reaches "nothing left
+  to ask" rather than looping — the exact end-to-end shape of the bug.
+  Re-ran the same Playwright walk after the fix: both new questions (and
+  `household_youngest_dependent_age`) skip cleanly, the wizard reaches
+  "done" after 25 questions, and `/report` renders all 16 sections with the
+  expected default (3-year LTC horizon) reflected in the calculation trace.
+
 ## 2026-09-12 — Real bug found via user testing: `apps/web` needs its own `.env`; Google button visual fixes; RTL arrow direction fix
 
 Three fixes from direct user feedback against the live deployed instance.
