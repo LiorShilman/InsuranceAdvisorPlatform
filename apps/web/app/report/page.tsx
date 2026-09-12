@@ -106,7 +106,7 @@ export default function ReportPage() {
         <p className="subtitle">נבנה מהנתונים השמורים האמיתיים שלך, לא ממוקאפ.</p>
         <p>
           <Link href="/questionnaire" style={{ color: "var(--brand)" }}>
-            ← חזרה לשאלון
+            → חזרה לשאלון
           </Link>
           {"   "}
           <button

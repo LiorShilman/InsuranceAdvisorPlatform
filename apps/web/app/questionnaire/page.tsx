@@ -307,7 +307,7 @@ export default function QuestionnairePage() {
       </p>
       <p>
         <Link href="/" style={{ color: "var(--brand)" }}>
-          ← חזרה לתצוגת ה-5 פרופילים
+          → חזרה לתצוגת ה-5 פרופילים
         </Link>
       </p>
 

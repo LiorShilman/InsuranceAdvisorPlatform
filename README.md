@@ -69,7 +69,8 @@ npm test            # vitest — 130+ tests across every calculator/engine
 
 # Postgres (needed for apps/web's API routes / the questionnaire's persistence):
 docker compose up -d
-cp .env.example .env   # only if you don't already have one
+cp .env.example .env                       # for the `prisma` CLI, run from repo root
+cp apps/web/.env.example apps/web/.env     # for the app itself — see docs/DECISIONS.md
 npm run prisma:migrate
 
 npm run preview     # starts apps/web on the fixed port http://localhost:4310

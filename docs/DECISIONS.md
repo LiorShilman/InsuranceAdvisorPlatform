@@ -2,6 +2,64 @@
 
 Maintained per PRD rule 18 (§46). One entry per decision, newest first.
 
+## 2026-09-12 — Real bug found via user testing: `apps/web` needs its own `.env`; Google button visual fixes; RTL arrow direction fix
+
+Three fixes from direct user feedback against the live deployed instance.
+
+1. **`apps/web` needs its own `.env` — a real, previously-undiagnosed bug,
+   not just a Google-specific one.** The user reported the new Google
+   button wasn't appearing at all after the previous entry's deploy.
+   Root cause: `next build` resolves its own project root from wherever
+   it's invoked — `npm run build --workspace apps/web` runs with `cwd`
+   set to `apps/web` (confirmed by the build log's own `- Environments:
+   .env` line only appearing once `apps/web/.env` existed), so Next's
+   env-file loading looks for `.env` **inside `apps/web`**, not the
+   monorepo root where the project's one `.env` had always lived.
+   `DATABASE_URL` (a server-only var, read from `process.env` at request
+   time) happened to keep working regardless — never fully explained,
+   possibly inherited through the shell that originally started the PM2
+   daemon — but `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is inlined into the client
+   bundle at **build time**, so a missing `apps/web/.env` meant it
+   compiled in as `undefined` and `GoogleSignInButton` silently rendered
+   nothing (`if (!clientId) return null`). Confirmed via
+   `grep -rc "19125517221" apps/web/.next/static` — the client ID string
+   was in 0 built files before the fix, 2 (`login`, `register` bundles)
+   after. Fixed by adding `apps/web/.env` (gitignored, same as the root
+   one) with the same values, and `apps/web/.env.example` documenting it
+   — the root `.env`/`.env.example` stay for the `prisma` CLI, which
+   *is* invoked from the repo root. This also silently fixes
+   `ANTHROPIC_API_KEY` for the same reason, before the user had a chance
+   to hit the identical bug there.
+2. **Google button visual mismatch** — the user's screenshot showed
+   Google's default "outline" theme (white box, sharp corners) clashing
+   against this app's dark surface. Rather than just switching to GSI's
+   `filled_black` theme (still a limited, non-app-matching palette),
+   adopted the same technique `ls-financial-advisor`'s
+   `google-sso.component.ts` already uses successfully (the user pointed
+   at it: "maybe there's already an implementation of this, visually, in
+   the project" — found in that sibling project, not this one):
+   a custom-styled button using this app's own `.btn` tokens (so it's
+   automatically theme-correct in light/dark with zero extra JS, unlike
+   this file's own first attempt at the fix, which tracked
+   `data-theme`/`prefers-color-scheme` with a `MutationObserver` — thrown
+   away once the overlay approach made that tracking unnecessary), with
+   Google's real, functional button rendered at `opacity: 0.01` directly
+   on top of it (`.google-btn-overlay` in `globals.css`) so the actual
+   click/keyboard target stays Google's own widget — only the pixels are
+   custom. One deliberate improvement over the sibling project's version:
+   the decorative fake button here is `aria-hidden` + `tabIndex={-1}`, so
+   a screen reader only ever announces the one real, functional button,
+   not both.
+3. **RTL arrow-direction inconsistency** — `questionnaire/page.tsx`'s
+   "back to the 5 profiles" link and `report/page.tsx`'s "back to
+   questionnaire" link both used `←`, while every other such link in the
+   app (`scenarios/page.tsx`, two more in `questionnaire/page.tsx` —
+   including one for a *forward* action, "view full report") uses `→`.
+   Not a real back/forward semantic distinction — `→` is this app's one
+   established convention for these decorative navigation arrows in RTL
+   text, regardless of which direction the action itself goes. Fixed the
+   two outliers to match.
+
 ## 2026-09-11 — Auth hardening, Google Sign-In, LLM explanation layer (§29), questionnaire widening
 
 Four features requested together; grouped in one entry since they landed in

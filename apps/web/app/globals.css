@@ -538,6 +538,38 @@ h2 {
   font-size: 0.85rem;
 }
 
+/* Google Sign-In — a custom-styled button (reusing .btn's own theme-aware
+   tokens, so it needs no separate dark-mode handling) with Google's real,
+   functional button rendered nearly-invisible directly on top of it, so the
+   actual click/keyboard target is still Google's own widget. See
+   app/components/google-sign-in-button.tsx's header comment. */
+.google-btn-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none; /* clicks pass through to .google-btn-overlay beneath it */
+}
+
+.google-btn-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.01;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.google-btn-overlay iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* Choice cards — questionnaire boolean/single-select answers */
 .choice-grid {
   display: grid;
